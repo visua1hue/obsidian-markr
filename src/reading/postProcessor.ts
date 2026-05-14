@@ -9,6 +9,12 @@ export function buildPostProcessor(getSettings: () => PluginSettings) {
 		const matcher = new Matcher(settings);
 
 		el.querySelectorAll("li").forEach((li) => {
+			// Skip list items we've already marked — the post-processor can run
+			// again on the same DOM, and re-processing would strip more text
+			// and stack a second badge. (mr-line now lives on the wrapper span,
+			// so the <li> carries a dedicated done-flag class instead.)
+			if (li.classList.contains("mr-line-done")) return;
+
 			const first = firstTextNode(li);
 			if (!first || !first.textContent) return;
 
@@ -19,19 +25,22 @@ export function buildPostProcessor(getSettings: () => PluginSettings) {
 
 			const match = matcher.matchAt(text, leading);
 			if (!match) return;
-			const after = text[match.offset + match.trigger.length];
+			const triggerEnd = match.offset + match.trigger.length;
+			const after = text[triggerEnd];
 			if (after !== undefined && !/\s/.test(after)) return;
 
+			// Strip the trigger and its trailing space. The gap between badge
+			// and body text is restored with a margin on the badge itself (the
+			// `.mr-badge-rv` class below) rather than left-as-text, so it can't
+			// be lost to HTML whitespace collapsing.
 			const skipSpace = after === " " ? 1 : 0;
-			// Strip the trigger (+ one space) from the first text node.
-			first.textContent = text.slice(match.offset + match.trigger.length + skipSpace);
+			first.textContent = text.slice(triggerEnd + skipSpace);
 
-			// Line background — a class on the <li> itself.
-			li.classList.add("mr-line", `mr-line-${match.def.id}`);
-
-			// Trigger badge prepended to the list item.
+			// Trigger badge. `mr-badge-rv` carries the reading-view-only end
+			// margin (the editor uses the real space character instead — see
+			// styles.css).
 			const badge = document.createElement("span");
-			badge.className = `mr-badge mr-badge-${match.def.id}`;
+			badge.className = `mr-badge mr-badge-rv mr-badge-${match.def.id}`;
 			if (match.def.icon) {
 				badge.classList.add("mr-badge-icon");
 				setIcon(badge, match.def.icon);
@@ -44,9 +53,83 @@ export function buildPostProcessor(getSettings: () => PluginSettings) {
 			} else {
 				badge.setAttribute("aria-hidden", "true");
 			}
-			li.prepend(badge);
+
+			// Task-list items have an inline checkbox <input> that Obsidian
+			// positions in the gutter (where a bullet would be). A block-level
+			// wrapper would break onto its own line after the checkbox, and
+			// swallowing the checkbox into the wrapper drags it out of the
+			// gutter — so for task items we tint the <li> directly and leave
+			// the checkbox untouched.
+			const taskCheckbox = li.querySelector(
+				":scope > input.task-list-item-checkbox",
+			);
+			if (taskCheckbox) {
+				li.classList.add(
+					"mr-line",
+					"mr-line-rv-li",
+					`mr-line-${match.def.id}`,
+				);
+				first.parentNode?.insertBefore(badge, first);
+				li.classList.add("mr-line-done");
+				return;
+			}
+
+			// Non-task items — a block-level wrapper holding the lead line's
+			// inline run only. It stops at the first block boundary, so the tint
+			// never spans continuation paragraphs, hard breaks, or nested
+			// sub-lists. `first.parentNode` is the <li> in a tight list or the
+			// wrapping <p> in a loose list — a <span> wrapper is valid in both
+			// (a <div> would be invalid inside the <p>).
+			const container = first.parentNode;
+			if (!container) return;
+			const wrapper = document.createElement("span");
+			wrapper.className = `mr-line mr-line-rv mr-line-${match.def.id}`;
+			const checkboxEl = container.querySelector<HTMLInputElement>(
+				'input[type="checkbox"].task-list-item-checkbox',
+			);
+			const insertBefore = checkboxEl
+				? checkboxEl.nextSibling
+				: container.firstChild;
+			container.insertBefore(wrapper, insertBefore);
+
+			// Pull the leading inline run into the wrapper, up to the first
+			// block boundary.
+			let node: ChildNode | null = wrapper.nextSibling;
+			while (node && !isBlockBoundary(node)) {
+				const next = node.nextSibling;
+				wrapper.appendChild(node);
+				node = next;
+			}
+			// Badge sits right before its text node.
+			wrapper.insertBefore(badge, first);
+			li.classList.add("mr-line-done");
 		});
 	};
+}
+
+/** Block-level tags that end the lead line's inline run. */
+const BLOCK_BOUNDARY_TAGS = new Set([
+	"UL",
+	"OL",
+	"P",
+	"DIV",
+	"BLOCKQUOTE",
+	"PRE",
+	"TABLE",
+	"H1",
+	"H2",
+	"H3",
+	"H4",
+	"H5",
+	"H6",
+	"BR",
+]);
+
+function isBlockBoundary(node: Node): boolean {
+	return (
+		node.nodeType === Node.ELEMENT_NODE &&
+		BLOCK_BOUNDARY_TAGS.has((node as Element).tagName)
+	);
 }
 
 function firstTextNode(el: Node): Text | null {
@@ -56,8 +139,18 @@ function firstTextNode(el: Node): Text | null {
 			if (t.textContent && t.textContent.trim().length > 0) return t;
 		}
 		if (child.nodeType === Node.ELEMENT_NODE) {
-			const tag = (child as Element).tagName;
+			const childEl = child as Element;
+			const tag = childEl.tagName;
 			if (tag === "UL" || tag === "OL") continue;
+			// Don't descend into output from a previous pass — a text-marker
+			// badge's textContent is the trigger char (would re-match), and a
+			// line wrapper already holds processed content.
+			if (
+				childEl.classList.contains("mr-badge") ||
+				childEl.classList.contains("mr-line")
+			) {
+				continue;
+			}
 			const inner = firstTextNode(child);
 			if (inner) return inner;
 		}

@@ -56,8 +56,7 @@ Terminology note: we use **marker** throughout for "a configured trigger that tu
 
 ### 3.1 File layout
 
-Current state (`iconPicker.ts` and the `migrate.ts` chain are not built yet;
-`util/` is currently empty):
+Current state (`iconPicker.ts` is not built yet; `util/` is currently empty):
 
 ```
 markr/
@@ -72,7 +71,7 @@ markr/
 │   ├── editor/
 │   │   ├── viewPlugin.ts  // CM6 ViewPlugin.fromClass (Live Preview)
 │   │   ├── matcher.ts     // Trie + matchListLine, longest-match-wins
-│   │   └── widgets.ts     // IconWidget extends WidgetType
+│   │   └── widgets.ts     // BadgeWidget extends WidgetType
 │   ├── reading/
 │   │   └── postProcessor.ts // <li> rewriter for Reading View
 │   └── theme/
@@ -80,8 +79,8 @@ markr/
 └── README.md
 ```
 
-Not yet built: `settings/migrate.ts` (a real migration chain — currently
-`main.ts` just discards saved data whose schema `version` doesn't match),
+Stale saved data is handled by a version check: `main.ts` discards saved data
+whose schema `version` doesn't match `DEFAULT_SETTINGS.version`. Not yet built:
 `settings/iconPicker.ts` (Lucide search modal), `util/` helpers.
 
 ### 3.2 Type system — best-in-class TS
@@ -91,8 +90,8 @@ We're using strict TS with `noUncheckedIndexedAccess`, `exactOptionalPropertyTyp
 The defining type decision: priority markers (`!`, `!!`, `!!!`) and custom markers (`?`, `~`, `@`, etc.) are *the same kind of thing structurally* but differ in lifecycle — priorities are managed by a single toggle and locked from inline edit, customs are user-owned. We model that with a `kind` discriminant rather than a separate type.
 
 ```ts
-// src/settings/types.ts — current shape (schema version bumps on any change
-// so stale saved data is discarded on load; see src/main.ts).
+// src/settings/types.ts — current shape. The schema `version` is bumped on any
+// shape change so stale saved data is discarded on load; see src/main.ts.
 
 /** A 1–3 character trigger string. Branded to prevent accidental string mixing. */
 export type Trigger = string & { readonly __brand: "Trigger" };
@@ -152,7 +151,7 @@ Key rules:
 
 - **No `any`. No `as` casts** except for the brand constructor (one place, one line, justified).
 - **Settings are deep-readonly at the type level**, mutated only through a single reducer in `main.ts`. Settings-driven cache invalidation is then trivial — replace the object, everything downstream rebuilds.
-- **Settings migration** is a `switch (raw.version)` chain returning `Result<PluginSettings, MigrationError>`. Each step pure.
+- **Stale saved data** is discarded, not migrated: `main.ts` checks the persisted `version` against `DEFAULT_SETTINGS.version` and falls back to defaults on mismatch.
 - **The `kind` discriminant** drives every downstream behavior: settings UI shows priority rows as locked, the matcher uses different trigger-resolution for `kind: "priority"` (longest match wins so `!!!` doesn't parse as `!!` + `!`), commands enumerate both kinds, etc.
 
 ### 3.3 The CM6 view plugin
@@ -173,7 +172,7 @@ marked list item. If so, the plugin emits **two** decorations:
 
 2. **Trigger badge** on `[markerFrom, markerTo]` — emitted only when
    `showBadge = !hideMarkerWhenCursorAway || cursorNotOnThisLine`:
-   - **icon markers** → `Decoration.replace` with an `IconWidget` (see §3.3b);
+   - **icon markers** → `Decoration.replace` with a `BadgeWidget` (see §3.3b);
    - **priority markers** (no icon) → `Decoration.mark` with
      `class="mr-badge mr-badge-<id>"`. The mark uses only layout-neutral CSS
      (background, colour, radius — no font-weight / size / spacing) so the
@@ -207,10 +206,10 @@ the body can never false-match — this closes issue #67 without needing the
 out to be sufficient and simpler). A trigger must be followed by whitespace or
 end-of-line, so `!!!!` and `!hello` do not match.
 
-### 3.3b `IconWidget` — `src/editor/widgets.ts`
+### 3.3b `BadgeWidget` — `src/editor/widgets.ts`
 
 Icon-only: priority markers never use a widget (they are styled in place), so
-`IconWidget` always renders an icon. `toDOM()` returns a single
+`BadgeWidget` always renders an icon. `toDOM()` returns a single
 `<span class="mr-badge mr-badge-<id> mr-badge-icon">` with `setIcon()`. It
 implements `eq()` (constructed from primitives → CM6 dedupes and reuses the DOM
 node across rebuilds) and `ignoreEvent()` returns `true` (the widget is opaque;
@@ -262,7 +261,9 @@ export default class MarkrPlugin extends Plugin {
   private themeEl: HTMLStyleElement | null = null;
 
   async onload() {
-    this.settings = migrate(await this.loadData()) ?? DEFAULT_SETTINGS;
+    const loaded = await this.loadData();
+    this.settings =
+      loaded?.version === DEFAULT_SETTINGS.version ? loaded : DEFAULT_SETTINGS;
     document.body.dataset.markr = "";
     this.themeEl = document.head.createEl("style", { attr: { id: "mr-vars" } });
     this.refreshTheme();
@@ -327,12 +328,12 @@ What we get from following the spec exactly:
 - **Viewport-only iteration.** `syntaxTree.iterate` over `view.visibleRanges`, never the whole doc.
 - **Single builder per update.** One `RangeSetBuilder` allocation, returned as one `DecorationSet`. CM6's diff handles re-renders efficiently when the set is structurally similar.
 - **Trie-based trigger matching.** Built once per settings change, never per call. Lookups O(k≤3).
-- **Stable widgets via `eq()`.** `IconWidget` instances are constructed with primitives and implement `eq()`:
+- **Stable widgets via `eq()`.** `BadgeWidget` instances are constructed with primitives and implement `eq()`:
 
 ```ts
-class IconWidget extends WidgetType {
+class BadgeWidget extends WidgetType {
   constructor(private readonly defId: string, private readonly icon: string) { super(); }
-  eq(other: IconWidget) { return other.defId === this.defId && other.icon === this.icon; }
+  eq(other: BadgeWidget) { return other.defId === this.defId && other.icon === this.icon; }
   toDOM() {
     const el = document.createElement("span");
     el.className = `mr-marker mr-marker-${this.defId}`;
@@ -445,7 +446,6 @@ These are the non-negotiables, taken from the eslint-plugin-obsidianmd ruleset +
 - `instanceof TFile` / `instanceof TFolder`, never `as TFile`.
 - All async paths have explicit error handling — no silent rejections.
 - Pure functions in `util/` and `editor/matcher.ts` — testable in isolation without Obsidian.
-- Result types (`type Result<T, E> = { ok: true; value: T } | { ok: false; error: E }`) for settings parsing and migration.
 
 **Linting**
 - `eslint-plugin-obsidianmd` (current v0.2.8) with `recommended` config.
@@ -514,7 +514,7 @@ replace-widget. Exact values live in `DEFAULT_SETTINGS` (`src/settings/types.ts`
 
 Hovering a marker shows the marker's `label` as a tooltip. Implementation:
 
-- **Live Preview:** the `IconWidget`'s root element gets `aria-label={label}` plus Obsidian's `data-tooltip-position="top"` attribute. Obsidian renders the tooltip; we don't ship our own.
+- **Live Preview:** the `BadgeWidget`'s root element gets `aria-label={label}` plus Obsidian's `data-tooltip-position="top"` attribute. Obsidian renders the tooltip; we don't ship our own.
 - **Reading View:** same attributes on the icon span in the post-processor.
 - **A11y bonus:** screen readers announce the label, which closes the accessibility gap that icon-only markers create.
 
@@ -637,9 +637,9 @@ load dev plugins.
 - CM6 decorations — https://codemirror.net/docs/ref/#view.Decoration
 - Hot Reload — https://github.com/pjeby/hot-reload
 
-**Not yet built:** `settings/migrate.ts` (real migration chain), inline marker
-editing + `settings/iconPicker.ts`, per-custom-marker apply commands, nested
-inheritance (§7.3), export spike (§7.6), the §4.8 benchmark pass.
+**Not yet built:** inline marker editing + `settings/iconPicker.ts`,
+per-custom-marker apply commands, nested inheritance (§7.3), export spike
+(§7.6), the §4.8 benchmark pass.
 
 ---
 
@@ -668,14 +668,14 @@ inheritance (§7.3), export spike (§7.6), the §4.8 benchmark pass.
 - **v0.6** — added **§9 "Getting started"**, a self-contained bootstrap playbook for local development. Covers prerequisites, scaffolding from the official sample plugin, test vault setup, symlink workflow, the hello-world smoke test, Hot Reload integration, and an ordered implementation sequence (steps 1–14) that maps each source file to the spec section that defines it. Iteration history renumbered to §10.
 - **v0.7** — trimmed and reconciled the spec with the shipped code:
   - **§3.2** updated to the real type shape — schema `version` is a bumpable
-    number (no migration chain yet; stale data is discarded on load),
-    `MarkerColor` carries `{bg, fg}` `ColorPair`s, no `appearance` block.
+    number (stale data is discarded on load, not migrated), `MarkerColor`
+    carries `{bg, fg}` `ColorPair`s, no `appearance` block.
   - **§3.3–§3.5 rewritten** to the actual rendering architecture after a
     patch-by-patch detour was unwound: `Decoration.line` for the full-width
     line background + a layout-neutral `.mr-badge` `Decoration.mark` (priority)
-    or `IconWidget` replace (icon markers) for the trigger. Added §3.3a
+    or `BadgeWidget` replace (icon markers) for the trigger. Added §3.3a
     (`matchListLine` — a positionally-scoped regex, sufficient without
-    `syntaxTree`) and §3.3b (`IconWidget`). Recorded the dead-ends (inline tint
+    `syntaxTree`) and §3.3b (`BadgeWidget`). Recorded the dead-ends (inline tint
     span over the body, fixed-width swap widget) as a warning — they broke
     link/code/bracket rendering, wrapped-line backgrounds, and cursor mapping.
   - **§7.1** — priority levels share a single colour, distinguished by glyph

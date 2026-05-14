@@ -17,28 +17,56 @@
 	--mr-badge-radius: 4px;
 }
 
-/* Line background. */
+/* Line background — a tinted highlight behind a marked list item. In the
+   editor it's a Decoration.line on the .cm-line; in reading view it's a
+   block-level .mr-line-rv wrapper around the badge and the line's inline run
+   (so the tint never spans continuation content or nested sub-lists). */
+.cm-line.mr-line {
+	box-shadow:
+		inset 0 2px 0 var(--background-primary),
+		inset 0 -2px 0 var(--background-primary);
+}
+
 .cm-line.mr-line,
-li.mr-line {
+.mr-line-rv,
+.mr-line-rv-li {
 	background: color-mix(
 		in oklch,
 		var(--mr-marker-bg, transparent) 28%,
 		transparent
 	);
 	border-radius: var(--mr-line-radius);
-	outline: 2px solid var(--background-primary);
-	outline-offset: -2px;
+	margin-block: 2px;
 	transition: background-color 120ms ease-out;
 }
 
-/* Masks the line tint behind the list marker so the tint starts at the badge. */
-.mr-line-lead {
-	background-color: var(--background-primary);
+/* Reading-view line wrapper. Padding insets the badge evenly from the tint
+   edges (matching the editor's roomier line box) and keeps it clear of the
+   inset outline. */
+.mr-line-rv {
+	/* display: block;
+	padding: 0.15em 0.4em; */
+	display: block;
+	width: 100%;
+	padding: 0.15em 0.3em;
+}
+
+/* Task items: checkbox stays outside the wrapper, so the tint span
+   must be inline to avoid a full-width block after the checkbox. */
+li.task-list-item .mr-line-rv {
+	display: inline;
+	padding-left: 0em;
+}
+
+/* Task-list items are tinted on the <li> itself (see postProcessor.ts). Only
+   block padding here — inline padding would shove the checkbox off the gutter. */
+.mr-line-rv-li {
+	padding-block: 0.15em;
 }
 
 @supports (corner-shape: squircle) {
 	.cm-line.mr-line,
-	li.mr-line,
+	.mr-line-rv,
 	.mr-badge {
 		corner-shape: squircle;
 	}
@@ -55,17 +83,26 @@ li.mr-line {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	padding: 0.05em 0.2em;
+	padding: 0.05em 0.15em;
 	min-width: 1.2em;
+	max-width: 1.2em;
 	height: 1.2em;
 
 	font-weight: 600;
 	font-size: 0.85em;
 	line-height: 1;
 	vertical-align: 0.05em;
-	margin-right: 0em;
 	white-space: nowrap;
 	font-variant-numeric: tabular-nums;
+}
+
+/* Reading-view badges only. The post-processor strips the trigger's trailing
+   space from the text, so the badge supplies the gap itself. The editor never
+   gets this class — there the space is real document text and the mark carries
+   no margin (keeps the badge↔text click boundary unambiguous). */
+.mr-badge-rv {
+	margin-inline-end: 0.3em;
+	margin-inline-start: 0.3em;
 }
 
 .mr-badge-p1 {
@@ -78,15 +115,13 @@ li.mr-line {
 
 .mr-badge-p3 {
 	letter-spacing: -0.05em;
-	margin-right: -0.05em;
 }
 
-/* Icon badges are always-on replace-widgets — ignoreEvent:true keeps cursor placement clean. */
+/* Icon replace-widget. Shares the .mr-badge box; only the vertical anchor
+   differs — the widget sits higher than a mark, so nudge it back down so the
+   icon state and the cursor-revealed mark state line up. */
 .mr-badge.mr-badge-icon {
-	padding: 0.05em 0.15em;
-	min-width: 1.2em;
-	height: 1.2em;
-	vertical-align: -0.05em; /* widget anchor sits higher than mark — compensate */
+	vertical-align: -0.1em;
 }
 
 .mr-badge.mr-badge-icon > svg,

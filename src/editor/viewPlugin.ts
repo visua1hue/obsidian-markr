@@ -97,8 +97,11 @@ export function buildMarkrExtension(getSettings: () => PluginSettings) {
 
 							// Trigger badge.
 							if (def.icon) {
-								// Icon markers replace the trigger char with an icon, so they
-								// must reveal raw text on cursor-enter to stay editable.
+								// Icon markers replace the trigger with an icon widget when
+								// the cursor is away. On cursor-enter they reveal the raw
+								// trigger char — but as a Decoration.mark in the same
+								// .mr-badge chip, not bare text, so the box width is
+								// identical to the widget and the body text doesn't jump.
 								const cursorHere = line.number === cursorLine;
 								const showIcon = !hideOnCursor || !cursorHere;
 								if (showIcon) {
@@ -112,6 +115,14 @@ export function buildMarkrExtension(getSettings: () => PluginSettings) {
 												def.label,
 												showTooltips,
 											),
+										}),
+									);
+								} else {
+									builder.add(
+										markerFrom,
+										markerTo,
+										Decoration.mark({
+											class: `mr-badge mr-badge-${def.id}`,
 										}),
 									);
 								}
