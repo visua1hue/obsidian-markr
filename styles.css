@@ -1,0 +1,99 @@
+/* Markr — full-width line tint (masked to start at the badge) + padded chip
+   trigger badge.
+
+   Line background is a `Decoration.line` on the block-level line element — it
+   never wraps inline content, so it can't conflict with Obsidian's own
+   link/code/bracket decorations and it handles line-wrapping natively. A
+   `.mr-line-lead` mark over the list-marker prefix paints the editor's own
+   background, so the tint visually starts at the badge.
+
+   Priority badges are an always-on `Decoration.mark` — a mark doesn't block
+   editing, so the trigger stays type-editable, and because it never swaps
+   there is no body-text jump (padding/weight are constant). Icon badges are
+   replace-widgets that reveal raw text on cursor-enter. */
+
+:root {
+	--mr-line-radius: 6px;
+	--mr-badge-radius: 4px;
+}
+
+/* Line background. */
+.cm-line.mr-line,
+li.mr-line {
+	background: color-mix(
+		in oklch,
+		var(--mr-marker-bg, transparent) 28%,
+		transparent
+	);
+	border-radius: var(--mr-line-radius);
+	outline: 2px solid var(--background-primary);
+	outline-offset: -2px;
+	transition: background-color 120ms ease-out;
+}
+
+/* Masks the line tint behind the list marker so the tint starts at the badge. */
+.mr-line-lead {
+	background-color: var(--background-primary);
+}
+
+@supports (corner-shape: squircle) {
+	.cm-line.mr-line,
+	li.mr-line,
+	.mr-badge {
+		corner-shape: squircle;
+	}
+}
+
+/* Trigger badge — a padded chip. Sized to its content (so `!` / `!!` / `!!!`
+   and icons each get their own width). Shared by the always-on priority mark
+   and the icon replace-widget. */
+.mr-badge {
+	background: var(--mr-marker-bg, transparent);
+	color: var(--mr-marker-fg, inherit);
+	border-radius: var(--mr-badge-radius);
+
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 0.05em 0.2em;
+	min-width: 1.2em;
+	height: 1.2em;
+
+	font-weight: 600;
+	font-size: 0.85em;
+	line-height: 1;
+	vertical-align: 0.05em;
+	margin-right: 0em;
+	white-space: nowrap;
+	font-variant-numeric: tabular-nums;
+}
+
+.mr-badge-p1 {
+	letter-spacing: 0;
+}
+
+.mr-badge-p2 {
+	letter-spacing: -0.02em;
+}
+
+.mr-badge-p3 {
+	letter-spacing: -0.05em;
+	margin-right: -0.05em;
+}
+
+/* Icon badges are always-on replace-widgets — ignoreEvent:true keeps cursor placement clean. */
+.mr-badge.mr-badge-icon {
+	padding: 0.05em 0.15em;
+	min-width: 1.2em;
+	height: 1.2em;
+	vertical-align: -0.05em; /* widget anchor sits higher than mark — compensate */
+}
+
+.mr-badge.mr-badge-icon > svg,
+.mr-badge.mr-badge-icon > .svg-icon {
+	width: 1em;
+	height: 1em;
+	stroke-width: 2.25;
+	flex-shrink: 0;
+	display: block;
+}
