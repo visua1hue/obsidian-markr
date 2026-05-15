@@ -1,11 +1,17 @@
 /* Markr — full-width line tint (masked to start at the badge) + padded chip
    trigger badge.
 
-   Line background is a `Decoration.line` on the block-level line element — it
-   never wraps inline content, so it can't conflict with Obsidian's own
-   link/code/bracket decorations and it handles line-wrapping natively. A
-   `.mr-line-lead` mark over the list-marker prefix paints the editor's own
-   background, so the tint visually starts at the badge.
+   Editor: line background is a `Decoration.line` on the block-level line
+   element — it never wraps inline content, so it can't conflict with
+   Obsidian's own link/code/bracket decorations and it handles line-wrapping
+   natively. A `.mr-line-lead` mark over the list-marker prefix paints the
+   editor's own background, so the tint visually starts at the badge.
+
+   Reading view: a single `.mr-rv-row` wrapper per marked list item owns
+   background, padding, and width. The wrapper holds only the item's own
+   top-level inline label run (badge + lead text + inline children), so the
+   tint can never spill into nested sub-lists or continuation paragraphs.
+   The <li> itself is never tinted — including for tasks.
 
    Priority badges are an always-on `Decoration.mark` — a mark doesn't block
    editing, so the trigger stays type-editable, and because it never swaps
@@ -17,19 +23,18 @@
 	--mr-badge-radius: 4px;
 }
 
-/* Line background — a tinted highlight behind a marked list item. In the
-   editor it's a Decoration.line on the .cm-line; in reading view it's a
-   block-level .mr-line-rv wrapper around the badge and the line's inline run
-   (so the tint never spans continuation content or nested sub-lists). */
+/* Editor line background — Decoration.line on the .cm-line. */
 .cm-line.mr-line {
 	box-shadow:
 		inset 0 2px 0 var(--background-primary),
 		inset 0 -2px 0 var(--background-primary);
 }
 
+/* Shared tint between editor lines and reading-view rows. CSS variables
+   (--mr-marker-bg / --mr-marker-fg) are bound by cssVars.ts through the
+   `.mr-line-<id>` selector that both surfaces carry. */
 .cm-line.mr-line,
-.mr-line-rv,
-.mr-line-rv-li {
+.mr-rv-row {
 	background: color-mix(
 		in oklch,
 		var(--mr-marker-bg, transparent) 28%,
@@ -40,33 +45,58 @@
 	transition: background-color 120ms ease-out;
 }
 
-/* Reading-view line wrapper. Padding insets the badge evenly from the tint
-   edges (matching the editor's roomier line box) and keeps it clear of the
-   inset outline. */
-.mr-line-rv {
-	/* display: block;
-	padding: 0.15em 0.4em; */
+/* Reading-view row — the per-item background lives on this element, never on
+   the <li>. Block-level so its tint spans the full content-area width
+   regardless of inline label length. Padding insets the badge from the tint
+   edges and matches the editor's roomier line box. */
+.mr-rv-row {
 	display: block;
-	width: 100%;
 	padding: 0.15em 0.3em;
 }
 
-/* Task items: checkbox stays outside the wrapper, so the tint span
-   must be inline to avoid a full-width block after the checkbox. */
-li.task-list-item .mr-line-rv {
-	display: inline;
-	padding-left: 0em;
+/* Bullet and numbered rows sit flush with the text column already (the list
+   marker lives outside the <li>'s content box). Zero out the inline padding
+   so the badge aligns with the text column rather than nudging in by 0.3em. */
+.mr-rv-row--bullet {
+	transform: translateY(-0.3em);
 }
 
-/* Task-list items are tinted on the <li> itself (see postProcessor.ts). Only
-   block padding here — inline padding would shove the checkbox off the gutter. */
-.mr-line-rv-li {
-	padding-block: 0.15em;
+.mr-rv-row--bullet,
+.mr-rv-row--numbered {
+	padding-top: 0.08em;
+	padding-bottom: 0.22em;
+}
+
+/* Task rows live in a flex sibling host (.mr-rv-host) alongside the
+   checkbox. flex:1 lets the row claim the remaining content-area width —
+   the tint then spans the row, not just the inline text — while the
+   checkbox keeps its native gutter offset (see compatibility selector
+   below). */
+.mr-rv-host {
+	display: flex;
+	align-items: baseline;
+	min-width: 0;
+}
+
+.mr-rv-row--task {
+	flex: 1 1 0;
+	min-width: 0;
+	padding-inline: 0;
+}
+
+/* Compatibility hook: Obsidian's reading-view CSS positions the task
+   checkbox via
+       ul > li.task-list-item > [p >] .task-list-item-checkbox
+   which no longer matches once the checkbox is wrapped in .mr-rv-host.
+   Re-apply the same gutter offset for any checkbox inside the wrapper. */
+.mr-rv-host > .task-list-item-checkbox {
+	margin-inline-start: calc(var(--checkbox-size) * -1.5);
+	flex-shrink: 0;
 }
 
 @supports (corner-shape: squircle) {
 	.cm-line.mr-line,
-	.mr-line-rv,
+	.mr-rv-row,
 	.mr-badge {
 		corner-shape: squircle;
 	}
