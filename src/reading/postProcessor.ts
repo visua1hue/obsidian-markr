@@ -1,6 +1,7 @@
 import { setIcon } from "obsidian";
 import type { PluginSettings } from "../settings/types";
 import { Matcher, type MatchResult } from "../editor/matcher";
+import { markerCssVars } from "../theme/cssVars";
 
 /** Marker set on a processed <li> so a re-run of the post-processor (Obsidian
    may invoke it on the same DOM after a re-render) doesn't strip text twice
@@ -13,11 +14,11 @@ interface RowTarget {
 	li: HTMLLIElement;
 	kind: RowKind;
 	/** Element whose direct children hold this item's visible label run. The
-	   <li> itself in tight lists; the leading <p> child in loose lists. */
+     <li> itself in tight lists; the leading <p> child in loose lists. */
 	contentHost: HTMLElement;
 	/** Task-checkbox <input>, when this item is a task. Stays as a sibling of
-	   .mr-rv-row inside contentHost — the row is inserted immediately after
-	   it, so the tint never paints under the checkbox. */
+     .mr-rv-row inside contentHost — the row is inserted immediately after
+     it, so the tint never paints under the checkbox. */
 	checkbox: HTMLInputElement | null;
 }
 
@@ -51,8 +52,9 @@ function renderRow(
 
 	stripTrigger(leadText, match);
 
-	const badge = buildBadge(match, settings);
 	const row = buildRow(target, match);
+	const badge = buildBadge(match, settings);
+
 	placeBadge(row, badge);
 
 	li.setAttribute(PROCESSED_ATTR, target.kind);
@@ -62,19 +64,6 @@ function renderRow(
 /* Structure                                                                */
 /* ------------------------------------------------------------------------ */
 
-/** Classify a list item and locate its label-bearing container.
-
-   The single abstraction the renderer uses for bullets, numbered items, and
-   tasks. `contentHost` always points at the element whose direct child run is
-   the visible label — either the <li> (tight list) or its leading <p> (loose
-   list). The task checkbox, when present, is always a direct child of the
-   chosen contentHost.
-
-   Obsidian's reading view prepends a <span class="list-bullet"> (and
-   sometimes a <span class="list-collapse-indicator">) to every <li> in a
-   <ul>, so the leading <p> in a loose list is *not* the first element child
-   of <li>. `findLeadParagraph` scans past those decoration spans rather than
-   bailing at the first non-<p> element. */
 function describe(li: HTMLLIElement): RowTarget | null {
 	let contentHost: HTMLElement = li;
 	let checkbox = directCheckbox(li);
@@ -134,9 +123,6 @@ function stripTrigger(
 	leadText: Text,
 	match: { triggerEnd: number; skipSpace: number },
 ): void {
-	// Strip the trigger and its trailing space. The badge supplies the gap
-	// via its own inline margin (.mr-badge-rv in styles.css), so HTML
-	// whitespace collapsing can't swallow it.
 	leadText.textContent = (leadText.textContent ?? "").slice(
 		match.triggerEnd + match.skipSpace,
 	);
@@ -148,19 +134,23 @@ function stripTrigger(
 
 function buildBadge(match: MatchResult, settings: PluginSettings): HTMLElement {
 	const badge = document.createElement("span");
-	badge.className = `mr-badge mr-badge-rv mr-badge-${match.def.id}`;
+	badge.className = `mr-badge mr-badge-rv mr-badge-${match.def.id} mr-colorized`;
+	badge.setCssProps(markerCssVars(match.def.color));
+
 	if (match.def.icon) {
 		badge.classList.add("mr-badge-icon");
 		setIcon(badge, match.def.icon);
 	} else {
 		badge.textContent = match.trigger;
 	}
+
 	if (settings.behavior.showTooltips) {
 		badge.setAttribute("aria-label", match.def.label);
 		badge.setAttribute("data-tooltip-position", "top");
 	} else {
 		badge.setAttribute("aria-hidden", "true");
 	}
+
 	return badge;
 }
 
@@ -168,24 +158,10 @@ function buildBadge(match: MatchResult, settings: PluginSettings): HTMLElement {
 /* Row                                                                      */
 /* ------------------------------------------------------------------------ */
 
-/** Build the row wrapper and pull this item's top-level inline label run
-   into it. Stops at the first block boundary — nested <ul>/<ol>, hard
-   breaks, continuation paragraphs, etc. — so the tint can never bleed past
-   the item's own label.
-
-   Three kinds, two layout strategies:
-
-   - Bullet / numbered: the row is inserted at the start of contentHost,
-     after any Obsidian decoration spans (.list-bullet, .list-collapse-
-     indicator) so those stay in the gutter outside the tint.
-   - Task: the checkbox is moved into a flex sibling host (.mr-rv-host)
-     alongside the row, so the row can claim the remaining content-area
-     width with `flex: 1` instead of shrinking to the inline text. The
-     checkbox keeps its native gutter offset via a compatibility selector
-     in styles.css. */
 function buildRow(target: RowTarget, match: MatchResult): HTMLElement {
 	const row = document.createElement("span");
-	row.className = `mr-rv-row mr-rv-row--${target.kind} mr-line-${match.def.id}`;
+	row.className = `mr-rv-row mr-rv-row--${target.kind} mr-line-${match.def.id} mr-colorized`;
+	row.setCssProps(markerCssVars(match.def.color));
 
 	if (
 		target.kind === "task" &&
@@ -228,9 +204,6 @@ function assemblePlainRow(target: RowTarget, row: HTMLElement): HTMLElement {
 	return row;
 }
 
-/** First child of contentHost that's actually part of the label run, skipping
-   Obsidian's prepended decoration spans. Keeps .list-bullet and the
-   collapse indicator outside the tinted row so they stay in the gutter. */
 function firstLabelAnchor(host: HTMLElement): Node | null {
 	for (const child of Array.from(host.childNodes)) {
 		if (child.nodeType === Node.ELEMENT_NODE) {
@@ -247,9 +220,6 @@ function firstLabelAnchor(host: HTMLElement): Node | null {
 	return null;
 }
 
-/** Badge sits at the start of the text column for every kind — the row's
-   DOM position already handles the checkbox/bullet gutter, so a single
-   placement rule suffices. */
 function placeBadge(row: HTMLElement, badge: HTMLElement): void {
 	row.insertBefore(badge, row.firstChild);
 }
@@ -258,11 +228,6 @@ function placeBadge(row: HTMLElement, badge: HTMLElement): void {
 /* Traversal helpers                                                        */
 /* ------------------------------------------------------------------------ */
 
-/** First non-whitespace text node in the label run for this item, skipping
-   the task checkbox. Recurses into inline elements (a <strong>, <a>, or
-   <code> may wrap the trigger text). Skips — but does not bail on —
-   nested-list and hard-break elements so an unexpected leading element
-   (e.g. Obsidian's decoration span variants) doesn't kill the lookup. */
 function firstLabelTextNode(
 	host: Element,
 	checkbox: HTMLInputElement | null,
@@ -290,10 +255,6 @@ function firstLabelTextNode(
 	return null;
 }
 
-/** Elements that never carry the lead text and should be skipped (but not
-   bailed on) when scanning for it. Sub-lists and hard breaks come *after*
-   the label; PRE/TABLE/HR/headings shouldn't appear inside a list-item's
-   inline run at all, but if they do they're not the label. */
 const SKIP_INSIDE_LABEL = new Set([
 	"UL",
 	"OL",
@@ -310,9 +271,6 @@ const SKIP_INSIDE_LABEL = new Set([
 	"H6",
 ]);
 
-/** Elements that end the inline label run when walking forward from the row's
-   insertion point in `buildRow` — anything block-level that interrupts the
-   label flow. */
 const BLOCK_BOUNDARY_TAGS = new Set([
 	"UL",
 	"OL",

@@ -23,6 +23,21 @@
 	--mr-badge-radius: 4px;
 }
 
+body[data-markr] .mr-colorized {
+	--mr-marker-bg: var(--mr-marker-bg-light);
+	--mr-marker-fg: var(--mr-marker-fg-light);
+}
+
+body.theme-light[data-markr] .mr-colorized {
+	--mr-marker-bg: var(--mr-marker-bg-light);
+	--mr-marker-fg: var(--mr-marker-fg-light);
+}
+
+body.theme-dark[data-markr] .mr-colorized {
+	--mr-marker-bg: var(--mr-marker-bg-dark);
+	--mr-marker-fg: var(--mr-marker-fg-dark);
+}
+
 /* Editor line background — Decoration.line on the .cm-line. */
 .cm-line.mr-line {
 	box-shadow:
@@ -63,6 +78,7 @@
 
 .mr-rv-row--bullet,
 .mr-rv-row--numbered {
+	padding-inline: 0;
 	padding-top: 0.08em;
 	padding-bottom: 0.22em;
 }

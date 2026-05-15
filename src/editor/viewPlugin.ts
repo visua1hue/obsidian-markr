@@ -9,6 +9,7 @@ import { RangeSetBuilder } from "@codemirror/state";
 import type { PluginSettings } from "../settings/types";
 import { Matcher, matchListLine } from "./matcher";
 import { BadgeWidget } from "./widgets";
+import { markerCssVars, markerStyleAttr } from "../theme/cssVars";
 
 export function buildMarkrExtension(getSettings: () => PluginSettings) {
 	return ViewPlugin.fromClass(
@@ -26,16 +27,16 @@ export function buildMarkrExtension(getSettings: () => PluginSettings) {
 			update(u: ViewUpdate): void {
 				const currentSettings = getSettings();
 				const settingsChanged = currentSettings !== this.settingsRef;
+
 				if (settingsChanged) {
 					this.settingsRef = currentSettings;
 					this.matcher = new Matcher(currentSettings);
 				}
-				// Only icon markers depend on cursor position (reveal-on-cursor);
-				// priority badges are always-on, so the cursor only matters when
-				// hide-on-cursor is enabled.
+
 				const cursorMatters =
 					currentSettings.behavior.hideMarkerWhenCursorAway;
 				const cursorRelevant = u.selectionSet && cursorMatters;
+
 				if (
 					!settingsChanged &&
 					!u.docChanged &&
@@ -44,6 +45,7 @@ export function buildMarkrExtension(getSettings: () => PluginSettings) {
 				) {
 					return;
 				}
+
 				this.decorations = this.build(u.view);
 			}
 
@@ -69,41 +71,43 @@ export function buildMarkrExtension(getSettings: () => PluginSettings) {
 				const showTooltips = settings.behavior.showTooltips;
 
 				const seenLines = new Set<number>();
+
 				for (const { from, to } of view.visibleRanges) {
 					let pos = from;
+
 					while (pos <= to) {
 						const line = view.state.doc.lineAt(pos);
+
 						if (seenLines.has(line.number)) {
 							pos = line.to + 1;
 							continue;
 						}
+
 						seenLines.add(line.number);
+
 						const match = matchListLine(line.text, this.matcher);
 						if (match) {
 							const { def, offset, trigger } = match;
 							const markerFrom = line.from + offset;
 							const markerTo = markerFrom + trigger.length;
+							const cssVars = markerCssVars(def.color);
+							const style = markerStyleAttr(def.color);
 
-							// Line background — a class on the block-level line element.
 							builder.add(
 								line.from,
 								line.from,
 								Decoration.line({
 									attributes: {
-										class: `mr-line mr-line-${def.id}`,
+										class: `mr-line mr-line-${def.id} mr-colorized`,
+										style,
 									},
 								}),
 							);
 
-							// Trigger badge.
 							if (def.icon) {
-								// Icon markers replace the trigger with an icon widget when
-								// the cursor is away. On cursor-enter they reveal the raw
-								// trigger char — but as a Decoration.mark in the same
-								// .mr-badge chip, not bare text, so the box width is
-								// identical to the widget and the body text doesn't jump.
 								const cursorHere = line.number === cursorLine;
 								const showIcon = !hideOnCursor || !cursorHere;
+
 								if (showIcon) {
 									builder.add(
 										markerFrom,
@@ -114,6 +118,7 @@ export function buildMarkrExtension(getSettings: () => PluginSettings) {
 												def.icon,
 												def.label,
 												showTooltips,
+												cssVars,
 											),
 										}),
 									);
@@ -122,26 +127,31 @@ export function buildMarkrExtension(getSettings: () => PluginSettings) {
 										markerFrom,
 										markerTo,
 										Decoration.mark({
-											class: `mr-badge mr-badge-${def.id}`,
+											attributes: {
+												class: `mr-badge mr-badge-${def.id} mr-colorized`,
+												style,
+											},
 										}),
 									);
 								}
 							} else {
-								// Priority markers stay editable text — a Decoration.mark
-								// doesn't block editing — so the padded chip is always-on.
-								// No swap means no body-text jump.
 								builder.add(
 									markerFrom,
 									markerTo,
 									Decoration.mark({
-										class: `mr-badge mr-badge-${def.id}`,
+										attributes: {
+											class: `mr-badge mr-badge-${def.id} mr-colorized`,
+											style,
+										},
 									}),
 								);
 							}
 						}
+
 						pos = line.to + 1;
 					}
 				}
+
 				return builder.finish();
 			}
 		},

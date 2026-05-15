@@ -17,7 +17,7 @@ export class MarkrSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Enable priority markers")
-			.setDesc("Use !, !!, !!! at the start of list items as priority levels.")
+			.setDesc("Use priority markers (!, !!, !!!) at the start of list items.")
 			.addToggle((t) =>
 				t.setValue(this.plugin.settings.priority.enabled).onChange(async (v) => {
 					await this.plugin.updateSettings((s) => ({ ...s, priority: { enabled: v } }));
@@ -72,7 +72,7 @@ export class MarkrSettingTab extends PluginSettingTab {
 		new Setting(containerEl).setName("Performance").setHeading();
 
 		new Setting(containerEl)
-			.setName("Apply in Reading view")
+			.setName("Apply in reading view")
 			.addToggle((t) =>
 				t
 					.setValue(this.plugin.settings.performance.applyInReadingView)
@@ -85,7 +85,7 @@ export class MarkrSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("Max file size (KB)")
+			.setName("Max file size in kilobytes")
 			.setDesc("Disable rendering above this size. 0 = unlimited.")
 			.addText((t) =>
 				t
