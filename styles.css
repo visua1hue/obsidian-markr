@@ -396,11 +396,11 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 	z-index: 1;
 }
 
-.mr-settings-color-wrap:hover:not(:has(input:disabled)) {
+.mr-settings-color-wrap:hover:not(.is-disabled) {
 	outline-color: var(--background-modifier-border-hover);
 }
 
-.mr-settings-color-wrap:has(input:disabled) {
+.mr-settings-color-wrap.is-disabled {
 	cursor: not-allowed;
 	pointer-events: none;
 	outline-color: color-mix(in srgb, var(--background-modifier-border) 50%, transparent);

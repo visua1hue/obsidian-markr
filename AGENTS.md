@@ -95,10 +95,28 @@ npm run build
 
 ## Versioning & releases
 
-- Bump `version` in `manifest.json` (SemVer) and update `versions.json` to map plugin version → minimum app version.
-- Create a GitHub release whose tag exactly matches `manifest.json`'s `version`. Do not use a leading `v`.
-- Attach `manifest.json`, `main.js`, and `styles.css` (if present) to the release as individual assets.
-- After the initial release, follow the process to add/update your plugin in the community catalog as required.
+Use the npm version script — it handles everything in one command:
+
+```bash
+npm run build          # build first
+git add .              # stage all changes
+git commit -m "..."    # commit
+npm version patch      # bump, tag, push → release workflow fires
+```
+
+**Version types (SemVer):**
+- `npm version patch` — bug fixes, no new features (0.1.1 → 0.1.2)
+- `npm version minor` — new backwards-compatible features (0.1.1 → 0.2.0)
+- `npm version major` — breaking changes (0.1.1 → 1.0.0)
+
+**What `npm version` does automatically:**
+1. Bumps `package.json` version
+2. Runs `version-bump.mjs` → updates `manifest.json` + `versions.json`
+3. Stages those files and creates a git commit
+4. Creates a matching git tag (no leading `v`)
+5. `postversion` pushes the commit + tag → GitHub release workflow fires
+
+**Release artifacts** attached automatically by the workflow: `main.js`, `manifest.json`, `styles.css`.
 
 ## Security, privacy, and compliance
 

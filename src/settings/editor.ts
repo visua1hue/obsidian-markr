@@ -413,6 +413,7 @@ export class MarkerEditor {
 			input.value = draft[key];
 			if (opts.disabled) {
 				input.disabled = true;
+				wrap.addClass("is-disabled");
 			} else {
 				this.plugin.registerDomEvent(input, "input", () => {
 					draft[key] = input.value;
@@ -438,6 +439,7 @@ export class MarkerEditor {
 		}
 		if (opts.disabled) {
 			badgeBgInput.disabled = true;
+			badgeBgWrap.addClass("is-disabled");
 		} else {
 			this.plugin.registerDomEvent(badgeBgInput, "input", () => {
 				draft.badgeBg = badgeBgInput.value;
