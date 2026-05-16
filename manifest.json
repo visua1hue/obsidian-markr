@@ -3,7 +3,7 @@
   "name": "Markr",
   "version": "0.1.0",
   "minAppVersion": "1.11.0",
-  "description": "Priority. In line. In markdown.",
+  "description": "Trigger-based list and task markers.",
   "author": "visua1hue",
   "authorUrl": "",
   "isDesktopOnly": false

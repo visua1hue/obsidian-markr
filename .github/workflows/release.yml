@@ -1,0 +1,36 @@
+name: Release
+
+on:
+    push:
+        tags:
+            - "[0-9]+.[0-9]+.[0-9]+"
+
+permissions:
+    contents: write
+
+jobs:
+    release:
+        runs-on: ubuntu-latest
+
+        steps:
+            - uses: actions/checkout@v5
+
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22.x
+                  cache: "npm"
+
+            - run: npm ci
+            - run: npm run build
+
+            - name: Bundle zip
+              run: zip markr-${{ github.ref_name }}.zip main.js styles.css manifest.json
+
+            - name: Create release
+              uses: softprops/action-gh-release@v2
+              with:
+                  files: |
+                      main.js
+                      styles.css
+                      manifest.json
+                      markr-${{ github.ref_name }}.zip
