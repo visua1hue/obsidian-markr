@@ -163,7 +163,7 @@ function buildBadge(match: MatchResult, settings: PluginSettings): HTMLElement {
 
 function buildRow(target: RowTarget, match: MatchResult): HTMLElement {
 	const row = document.createElement("span");
-	row.className = `mr-rv-row mr-rv-row--${target.kind} mr-line-${match.def.id} mr-colorized`;
+	row.className = `mr-rv-row mr-rv-row--${target.kind} mr-rv-enter mr-line-${match.def.id} mr-colorized`;
 	row.setCssProps(markerCssVars(match.def.color));
 
 	if (

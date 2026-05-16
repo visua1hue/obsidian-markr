@@ -23,9 +23,6 @@ jobs:
             - run: npm ci
             - run: npm run build
 
-            - name: Bundle zip
-              run: zip markr-${{ github.ref_name }}.zip main.js styles.css manifest.json
-
             - name: Create release
               uses: softprops/action-gh-release@v2
               with:
@@ -33,4 +30,3 @@ jobs:
                       main.js
                       styles.css
                       manifest.json
-                      markr-${{ github.ref_name }}.zip

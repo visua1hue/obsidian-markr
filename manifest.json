@@ -1,10 +1,10 @@
 {
 	"id": "markr",
 	"name": "Markr",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"minAppVersion": "1.11.0",
 	"description": "Trigger-based list and task markers.",
 	"author": "visua1hue",
-	"authorUrl": "",
-	"isDesktopOnly": false
+	"authorUrl": "https://github.com/visua1hue",
+	"isDesktopOnly": true
 }
