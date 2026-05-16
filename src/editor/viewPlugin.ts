@@ -55,15 +55,6 @@ export function buildMarkrExtension(getSettings: () => PluginSettings) {
 				const builder = new RangeSetBuilder<Decoration>();
 				const settings = this.settingsRef;
 
-				if (settings.performance.maxFileSizeKB > 0) {
-					if (
-						view.state.doc.length >
-						settings.performance.maxFileSizeKB * 1024
-					) {
-						return builder.finish();
-					}
-				}
-
 				const cursorLine = view.state.doc.lineAt(
 					view.state.selection.main.head,
 				).number;
@@ -90,8 +81,11 @@ export function buildMarkrExtension(getSettings: () => PluginSettings) {
 							const { def, offset, trigger } = match;
 							const markerFrom = line.from + offset;
 							const markerTo = markerFrom + trigger.length;
-							const cssVars = markerCssVars(def.color);
-							const style = markerStyleAttr(def.color);
+							const badgeBg =
+							def.badgeBg ??
+							(def.kind === "priority" ? "var(--mr-marker-bg)" : undefined);
+							const cssVars = markerCssVars(def.color, badgeBg);
+							const style = markerStyleAttr(def.color, badgeBg);
 
 							builder.add(
 								line.from,

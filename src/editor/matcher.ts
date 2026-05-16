@@ -19,11 +19,7 @@ export class Matcher {
 		const priorityOn = settings.priority.enabled;
 		for (const def of settings.markers) {
 			if (def.kind === "priority" && !priorityOn) continue;
-			if (def.kind === "custom" && !def.enabled) continue;
 			this.insert(def.trigger, def);
-			if (def.kind === "custom") {
-				for (const a of def.aliases) this.insert(a, def);
-			}
 		}
 	}
 

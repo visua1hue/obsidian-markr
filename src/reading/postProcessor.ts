@@ -135,7 +135,10 @@ function stripTrigger(
 function buildBadge(match: MatchResult, settings: PluginSettings): HTMLElement {
 	const badge = document.createElement("span");
 	badge.className = `mr-badge mr-badge-rv mr-badge-${match.def.id} mr-colorized`;
-	badge.setCssProps(markerCssVars(match.def.color));
+	const badgeBg =
+		match.def.badgeBg ??
+		(match.def.kind === "priority" ? "var(--mr-marker-bg)" : undefined);
+	badge.setCssProps(markerCssVars(match.def.color, badgeBg));
 
 	if (match.def.icon) {
 		badge.classList.add("mr-badge-icon");

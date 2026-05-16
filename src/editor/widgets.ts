@@ -26,7 +26,8 @@ export class BadgeWidget extends WidgetType {
 			other.cssVars["--mr-marker-bg-dark"] ===
 				this.cssVars["--mr-marker-bg-dark"] &&
 			other.cssVars["--mr-marker-fg-dark"] ===
-				this.cssVars["--mr-marker-fg-dark"]
+				this.cssVars["--mr-marker-fg-dark"] &&
+			other.cssVars["--mr-badge-bg"] === this.cssVars["--mr-badge-bg"]
 		);
 	}
 

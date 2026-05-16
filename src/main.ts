@@ -1,19 +1,25 @@
 import { Plugin } from "obsidian";
 import { DEFAULT_SETTINGS, type PluginSettings } from "./settings/types";
-import { MarkrSettingTab } from "./settings/tab";
+import { MarkrSettingTab } from "./settings";
 import { buildMarkrExtension } from "./editor/viewPlugin";
 import { buildPostProcessor } from "./reading/postProcessor";
-import { registerCommands } from "./commands";
+import { registerCommands, syncCustomMarkerCommands } from "./commands";
 
 export default class MarkrPlugin extends Plugin {
 	settings: PluginSettings = DEFAULT_SETTINGS;
+	private readonly customCommandIds = new Set<string>();
 
 	async onload(): Promise<void> {
-		const loaded = (await this.loadData()) as { version?: unknown } | null;
-		this.settings =
-			loaded && loaded.version === DEFAULT_SETTINGS.version
-				? (loaded as PluginSettings)
-				: DEFAULT_SETTINGS;
+		const loaded = (await this.loadData()) as Partial<PluginSettings> | null;
+		this.settings = loaded
+			? {
+					...DEFAULT_SETTINGS,
+					...loaded,
+					priority: { ...DEFAULT_SETTINGS.priority, ...(loaded.priority ?? {}) },
+					behavior: { ...DEFAULT_SETTINGS.behavior, ...(loaded.behavior ?? {}) },
+					performance: { ...DEFAULT_SETTINGS.performance, ...(loaded.performance ?? {}) },
+				}
+			: DEFAULT_SETTINGS;
 
 		document.body.dataset.markr = "";
 
@@ -24,6 +30,7 @@ export default class MarkrPlugin extends Plugin {
 		this.addSettingTab(new MarkrSettingTab(this.app, this));
 
 		registerCommands(this, () => this.settings);
+		syncCustomMarkerCommands(this, () => this.settings, this.customCommandIds);
 	}
 
 	onunload(): void {
@@ -36,6 +43,7 @@ export default class MarkrPlugin extends Plugin {
 		this.settings = updater(this.settings);
 		await this.saveData(this.settings);
 		this.app.workspace.updateOptions();
+		syncCustomMarkerCommands(this, () => this.settings, this.customCommandIds);
 	}
 
 	async resetSettings(): Promise<void> {

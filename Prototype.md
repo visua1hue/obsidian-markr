@@ -40,7 +40,7 @@ Terminology note: we use **marker** throughout for "a configured trigger that tu
   - A color (single value, or split light/dark per §3.2).
   - An optional icon (Lucide name) replacing the trigger.
   - A display label (used for tooltips and a11y per §7.2).
-- **Settings tab.** Users can add, remove, edit, and reorder marker definitions (see §6 for the UX spec).
+- **Settings tab.** Users can add, remove, edit, and reorder marker definitions (see §7.4 for the UX spec).
 - **Style Settings plugin compatibility.** Exposes CSS variables (radius, padding, color stops) so the [Style Settings plugin](https://github.com/mgmeyers/obsidian-style-settings) can tweak them.
 - **Icon picker.** A modal that searches Obsidian's bundled Lucide icon set (no embedded icon list — see §3.4).
 
@@ -56,18 +56,17 @@ Terminology note: we use **marker** throughout for "a configured trigger that tu
 
 ### 3.1 File layout
 
-Current state (`iconPicker.ts` is not built yet; `util/` is currently empty):
-
 ```
 markr/
 ├── manifest.json, package.json, tsconfig.json, eslint.config.mts,
 │   esbuild.config.mjs, version-bump.mjs, versions.json, styles.css
 ├── src/
 │   ├── main.ts            // Plugin entry, lifecycle, settings persistence
-│   ├── commands.ts        // Apply / remove / cycle commands (see §7.5)
+│   ├── commands.ts        // Apply / remove / cycle / custom-marker commands
 │   ├── settings/
 │   │   ├── types.ts       // MarkerDef, PluginSettings, DEFAULT_SETTINGS
-│   │   └── tab.ts         // PluginSettingTab — Debug / Markers / Performance
+│   │   ├── editor.ts      // MarkerEditor — always-visible inline row builder
+│   │   └── index.ts       // MarkrSettingTab — Defaults / Personalize Markers
 │   ├── editor/
 │   │   ├── viewPlugin.ts  // CM6 ViewPlugin.fromClass (Live Preview)
 │   │   ├── matcher.ts     // Trie + matchListLine, longest-match-wins
@@ -79,19 +78,16 @@ markr/
 └── README.md
 ```
 
-Stale saved data is handled by a version check: `main.ts` discards saved data
-whose schema `version` doesn't match `DEFAULT_SETTINGS.version`. Not yet built:
-`settings/iconPicker.ts` (Lucide search modal), `util/` helpers.
+Stale saved data is handled by a lenient deep-merge: `main.ts` spreads saved data over `DEFAULT_SETTINGS`, merging nested objects one level deep. Missing fields fall back to defaults; extra fields are ignored. No schema version is tracked or checked. The `IconPickerModal` lives inline in `editor.ts` (not a separate file).
 
 ### 3.2 Type system — best-in-class TS
 
-We're using strict TS with `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, and `noImplicitOverride`. Everything that crosses a boundary (settings JSON, regex match results, editor state) is parsed through a discriminated union, not cast.
+We're using `noUncheckedIndexedAccess` and `strictNullChecks`. Everything that crosses a boundary (settings JSON, regex match results, editor state) is parsed through a discriminated union, not cast.
 
 The defining type decision: priority markers (`!`, `!!`, `!!!`) and custom markers (`?`, `~`, `@`, etc.) are *the same kind of thing structurally* but differ in lifecycle — priorities are managed by a single toggle and locked from inline edit, customs are user-owned. We model that with a `kind` discriminant rather than a separate type.
 
 ```ts
-// src/settings/types.ts — current shape. The schema `version` is bumped on any
-// shape change so stale saved data is discarded on load; see src/main.ts.
+// src/settings/types.ts — current shape.
 
 /** A 1–3 character trigger string. Branded to prevent accidental string mixing. */
 export type Trigger = string & { readonly __brand: "Trigger" };
@@ -123,22 +119,17 @@ export type MarkerDef =
       readonly label: string;
       readonly color: MarkerColor;
       readonly icon: string | null;          // Lucide name, or null
-      readonly enabled: boolean;
     };
 
 export interface PluginSettings {
-  readonly version: number;                 // current schema version
   readonly markers: readonly MarkerDef[];    // priority entries first, then custom
   readonly priority: { readonly enabled: boolean };
   readonly performance: {
-    readonly maxFileSizeKB: number;          // 0 = no limit
-    readonly applyInReadingView: boolean;    // kill switch for the post-processor
+    readonly applyInReadingView: boolean;
   };
   readonly behavior: {
     readonly hideMarkerWhenCursorAway: boolean;
     readonly showTooltips: boolean;
-    readonly nestedInheritance: boolean;     // experimental, default off
-    readonly enableAutosuggest: boolean;     // deferred; default off
   };
 }
 ```
@@ -150,9 +141,10 @@ overridable by the Style Settings plugin.
 Key rules:
 
 - **No `any`. No `as` casts** except for the brand constructor (one place, one line, justified).
-- **Settings are deep-readonly at the type level**, mutated only through a single reducer in `main.ts`. Settings-driven cache invalidation is then trivial — replace the object, everything downstream rebuilds.
-- **Stale saved data** is discarded, not migrated: `main.ts` checks the persisted `version` against `DEFAULT_SETTINGS.version` and falls back to defaults on mismatch.
-- **The `kind` discriminant** drives every downstream behavior: settings UI shows priority rows as locked, the matcher uses different trigger-resolution for `kind: "priority"` (longest match wins so `!!!` doesn't parse as `!!` + `!`), commands enumerate both kinds, etc.
+- **Settings are deep-readonly at the type level**, mutated only through a single updater in `main.ts`. Settings-driven cache invalidation is then trivial — replace the object, everything downstream rebuilds.
+- **Stale saved data** is tolerated via lenient merge: `main.ts` spreads the saved partial over `DEFAULT_SETTINGS`, so dropped/renamed fields fall back to defaults automatically.
+- **The `kind` discriminant** drives every downstream behavior: settings UI shows priority rows as locked, the matcher uses longest-match-wins (so `!!!` doesn't parse as `!!` + `!`), commands enumerate both kinds, etc.
+- **All custom markers are active** — there is no `enabled` toggle per marker. A configured marker is always on.
 
 ### 3.3 The CM6 view plugin
 
@@ -243,7 +235,7 @@ managed `<style id="mr-vars">` element created on load and removed on unload.
   to normal rounded corners.
 
 `src/theme/cssVars.ts` rebuilds the managed `<style>` on every settings change.
-It emits, per enabled marker, a `body.theme-light[data-markr]` and
+It emits, per marker, a `body.theme-light[data-markr]` and
 `body.theme-dark[data-markr]` rule scoped to `:is(.mr-line-<id>, .mr-badge-<id>)`
 setting `--mr-marker-bg` / `--mr-marker-fg` from the marker's `ColorPair`. The
 `[data-markr]` attribute is attached to `document.body` on load and removed on
@@ -255,41 +247,43 @@ and the per-marker colour vars are the documented override points.
 ### 3.6 Plugin lifecycle
 
 ```ts
-// src/main.ts (sketch)
+// src/main.ts (current shape)
 export default class MarkrPlugin extends Plugin {
-  settings!: PluginSettings;
-  private themeEl: HTMLStyleElement | null = null;
+  settings: PluginSettings = DEFAULT_SETTINGS;
+  private readonly customCommandIds = new Set<string>();
 
-  async onload() {
-    const loaded = await this.loadData();
-    this.settings =
-      loaded?.version === DEFAULT_SETTINGS.version ? loaded : DEFAULT_SETTINGS;
+  async onload(): Promise<void> {
+    const loaded = (await this.loadData()) as Partial<PluginSettings> | null;
+    this.settings = loaded
+      ? {
+          ...DEFAULT_SETTINGS,
+          ...loaded,
+          priority:    { ...DEFAULT_SETTINGS.priority,    ...(loaded.priority    ?? {}) },
+          behavior:    { ...DEFAULT_SETTINGS.behavior,    ...(loaded.behavior    ?? {}) },
+          performance: { ...DEFAULT_SETTINGS.performance, ...(loaded.performance ?? {}) },
+        }
+      : DEFAULT_SETTINGS;
+
     document.body.dataset.markr = "";
-    this.themeEl = document.head.createEl("style", { attr: { id: "mr-vars" } });
-    this.refreshTheme();
 
     this.registerEditorExtension(buildMarkrExtension(() => this.settings));
     this.registerMarkdownPostProcessor(buildPostProcessor(() => this.settings));
     this.addSettingTab(new MarkrSettingTab(this.app, this));
 
-    registerCommands(this, () => this.settings);  // see §7.5
+    registerCommands(this, () => this.settings);
+    syncCustomMarkerCommands(this, () => this.settings, this.customCommandIds);
   }
 
-  async onunload() {
-    this.themeEl?.remove();
+  onunload(): void {
     delete document.body.dataset.markr;
     // No detachLeavesOfType, no manual event removal — register* handles it.
   }
 
-  async updateSettings(next: PluginSettings) {
-    this.settings = next;
-    await this.saveData(next);
-    this.refreshTheme();
-    this.app.workspace.updateOptions(); // triggers CM6 to re-evaluate extensions
-  }
-
-  private refreshTheme() {
-    if (this.themeEl) this.themeEl.textContent = renderVars(this.settings);
+  async updateSettings(updater: (s: PluginSettings) => PluginSettings): Promise<void> {
+    this.settings = updater(this.settings);
+    await this.saveData(this.settings);
+    this.app.workspace.updateOptions();
+    syncCustomMarkerCommands(this, () => this.settings, this.customCommandIds);
   }
 }
 ```
@@ -319,7 +313,7 @@ CodeMirror 6's architecture does the file-size optimization for us, transparentl
 
 Opening a 5MB file with a marker on every line costs the same first-paint as opening a 50KB file, because only ~50 visible lines are ever inspected at once. The optimization the user might *expect* us to write — "if file is big, only load nearby content" — is already happening at the CM6 layer, and we ride on top of it.
 
-**The implication for design:** we don't add file-size-conditional logic to the hot path. Doing so would either duplicate work CM6 already does, or actively interfere with its scheduling. The one exception is the kill-switch sentinel below (§4.4), which addresses pathological cases that bypass the viewport entirely.
+**The implication for design:** we don't add file-size-conditional logic to the hot path. Doing so would either duplicate work CM6 already does, or actively interfere with its scheduling.
 
 ### 4.3 Tier 0 — Baseline (always on, in v1)
 
@@ -347,7 +341,6 @@ class BadgeWidget extends WidgetType {
   This is the under-discussed perf knob — without it, every doc change rebuilds every widget DOM node.
 
 - **No `<style>` per render.** One managed `<style id="mr-vars">` element, updated only on settings change.
-- **Inheritance stack is O(depth).** When `nestedInheritance` is on, the iterator maintains a stack of `(indentLevel, defId)`. Capped at 3 levels.
 - **Post-processor early bail.** First-text-node mismatch returns before any DOM work.
 
 ### 4.4 Tier 1 — Free wins (also in v1)
@@ -381,8 +374,6 @@ For a long file where most list items aren't marked, this skips the trie entirel
 
 **Cache the previous cursor line.** Re-derive `view.state.doc.lineAt(...)` only when selection actually moved. Saves one tree lookup per `update()` on non-selection paths.
 
-**Sentinel for pathological cases — `maxFileSizeKB`.** If `state.doc.length > settings.performance.maxFileSizeKB * 1024`, return an empty `DecorationSet`. **This is not a primary optimization** — Tier 0 + Tier 1 already make file size irrelevant for normal use. The sentinel exists as a safety valve for workflows that bypass the viewport: programmatic full-document scans, search-and-replace operations, export-to-PDF rendering the whole document at once. Default off (0 = unlimited); user opt-in only.
-
 ### 4.5 Tier 2 — Conditional (only if benchmarks demand)
 
 Real engineering work, real wins, but worth waiting for evidence before paying the complexity cost.
@@ -399,7 +390,7 @@ Worth it if the syntax-tree walk shows up in profiles as a real bottleneck. Adds
 
 Common "optimizations" that are traps:
 
-- **Debouncing `update()`.** Sounds smart, breaks the typing UX. CM6 already batches within a frame; debouncing adds visible lag between keystroke and visual response. (The `debounceMs` setting that appeared in early drafts of this spec is deliberately removed.)
+- **Debouncing `update()`.** Sounds smart, breaks the typing UX. CM6 already batches within a frame; debouncing adds visible lag between keystroke and visual response.
 - **`requestIdleCallback` for the post-processor.** Reading view's post-processor pipeline is already chunked by markdown block and scheduled by Obsidian. Adding our own scheduling fights the host.
 - **Manual memoization of `matchTrigger` results.** The match is cheaper than a Map lookup at this scale. Profiling shows this immediately.
 - **File-size-conditional logic on the hot path.** Duplicates CM6's viewport optimization or interferes with its scheduling. See §4.2.
@@ -432,20 +423,18 @@ If the 50k-line case passes, ship v1 with Tier 0 + Tier 1. If it fails, that's t
 
 These are the non-negotiables, taken from the eslint-plugin-obsidianmd ruleset + general TS hygiene.
 
-**tsconfig**
-- `"strict": true`
+**tsconfig (actual settings)**
 - `"noUncheckedIndexedAccess": true`
-- `"exactOptionalPropertyTypes": true`
-- `"noImplicitOverride": true`
-- `"noFallthroughCasesInSwitch": true`
-- `"target": "ES2022"`, `"module": "ESNext"`, `"moduleResolution": "Bundler"`
+- `"strictNullChecks": true`
+- `"strictBindCallApply": true`
+- `"target": "ES6"`, `"module": "ESNext"`, `"moduleResolution": "node"`
 
 **Patterns**
 - Discriminated unions for anything with a "kind" — settings color, match results, command payloads.
-- Branded types for trigger strings and marker IDs to prevent string mix-ups.
+- Branded types for trigger strings to prevent string mix-ups.
 - `instanceof TFile` / `instanceof TFolder`, never `as TFile`.
 - All async paths have explicit error handling — no silent rejections.
-- Pure functions in `util/` and `editor/matcher.ts` — testable in isolation without Obsidian.
+- Pure functions in `editor/matcher.ts` — testable in isolation without Obsidian.
 
 **Linting**
 - `eslint-plugin-obsidianmd` (current v0.2.8) with `recommended` config.
@@ -453,7 +442,7 @@ These are the non-negotiables, taken from the eslint-plugin-obsidianmd ruleset +
 - Pre-commit: `eslint --fix && tsc --noEmit`.
 
 **Testing**
-- `vitest` for `util/` and `editor/matcher.ts`. Obsidian APIs are mocked, so we only test our pure code.
+- `vitest` for `editor/matcher.ts`. Obsidian APIs are mocked, so we only test our pure code.
 - No e2e — Obsidian isn't headless-friendly. Manual test plan in `TESTING.md`.
 
 ---
@@ -488,6 +477,8 @@ The flagship feature. Three priority markers, distinguished by the count of
 underlying need was visual priority signal in flat project logs, not the
 four-quadrant framework specifically.
 
+**Labels.** `!` = Important, `!!` = Urgent, `!!!` = Critical.
+
 **Colour.** All three priority levels share **one** soft-pink colour pair
 (light/dark split) — they are told apart by the trigger glyphs (`!` / `!!` /
 `!!!`), not by a colour ramp. Priority markers have **no icon** (`icon: null`):
@@ -518,7 +509,7 @@ Hovering a marker shows the marker's `label` as a tooltip. Implementation:
 - **Reading View:** same attributes on the icon span in the post-processor.
 - **A11y bonus:** screen readers announce the label, which closes the accessibility gap that icon-only markers create.
 
-Settings: one toggle `behavior.showTooltips` (default on). Zero perf cost — attribute-only, no event listeners.
+Settings: one toggle `behavior.showTooltips` (default off). Zero perf cost — attribute-only, no event listeners.
 
 ### 7.3 Nested marker inheritance (experimental)
 
@@ -534,50 +525,52 @@ When a list item without its own trigger is indented under one *with* a trigger,
 
 - Costs a small stack in the iterator (trivial).
 - Cap inheritance at 3 levels to avoid runaway styling.
-- Marked **experimental** in the UI for v1. Behind `behavior.nestedInheritance` (default off).
+- Backlog — not built.
 
 ### 7.4 Settings UX
 
-The settings panel currently has three sections:
+The settings panel has two groups:
 
-**Debug.** `priority.enabled` toggle, the `hideMarkerWhenCursorAway` and
-`showTooltips` behavior toggles, and a "Reset settings to defaults" button.
+**Defaults.** `priority.enabled` toggle; `applyInReadingView` toggle (desc: "May impact performance. Switch views to apply."); `hideMarkerWhenCursorAway` and `showTooltips` behavior toggles; a "Reset settings to defaults" button.
 
-**Markers.** Read-only list of the configured markers (trigger, label, icon).
-Full inline editing — add / remove / reorder, icon picker, colour picker — is
-still to build (see §7.7); this section is currently view-only.
+**Personalize Markers.** Always-visible inline rows — one per configured marker. Priority rows (`!`, `!!`, `!!!`) are locked: trigger and color pickers are read-only (visually dimmed, with a lock icon in place of the delete button). Custom rows are fully editable and auto-save on blur when trigger and label are non-empty and the value has changed.
 
-**Performance.** `maxFileSizeKB` (default 0 = unlimited) and `applyInReadingView`
-(default on). Both ship off the hot path.
+Row anatomy (left → right):
+- Trigger input (1–3 chars, monospace, fixed-width)
+- Label input (flexible width)
+- Icon picker button (squircle, shows icon in marker color when selected, dashed border when empty)
+- Background color circle (plain `<input type="color">` styled as a circle via `border-radius: 50%` and outline ring)
+- Foreground color circle (same)
+- Lock icon (priority rows) or delete button (custom rows)
 
-> The fuller five-section design (Appearance / Priority / Markers / Performance
-> / Advanced with a fixed-grid editable row layout, locked priority rows, live
-> preview chips, an "Import from List Callouts" migration tool) is the target
-> for the settings polish pass — not yet built.
+Row background is tinted with the marker's bg color: `color-mix(in oklch, var(--mr-marker-bg) 28%, var(--background-primary))` — using `--background-primary` as the opaque base so the tint looks identical to the editor background.
+
+A `+` button below the list opens an inline creator row (same anatomy, unfilled, autofocused trigger). Creator commits on blur when both trigger and label are non-empty; cancel on Escape or blur with empty fields. The live badge preview above the inputs reflects the current draft state.
+
+`IconPickerModal` extends `FuzzySuggestModal<string>` — searches `getIconIds()` live, no embedded icon list.
 
 ### 7.5 Commands and hotkeys
 
 The plugin contributes a generated set of commands. **No default hotkeys** — users bind in Obsidian's standard hotkey panel.
 
-**Currently implemented** (`src/commands.ts`), all gated on `priority.enabled`
-for the priority ones:
+**Currently implemented** (`src/commands.ts`):
 
-- `markr:apply-p1` / `apply-p2` / `apply-p3` — "Apply important / high priority
-  / highest priority" — sets that priority on the current line.
-- `markr:cycle-priority` — cycles `(none) → ! → !! → !!! → (none)` on the line.
+Priority commands (gated on `priority.enabled`):
+- `markr:apply-p3` — "Apply "Critical" marker" (`!!!`)
+- `markr:apply-p2` — "Apply "Urgent" marker" (`!!`)
+- `markr:apply-p1` — "Apply "Important" marker" (`!`)
+- `markr:cycle-priority` — "Cycle priority" — cycles `(none) → ! → !! → !!! → (none)` on the line.
 - `markr:remove` — "Remove marker from line" (closes issue #71).
 
-Per-marker apply commands for *custom* markers are planned but not yet wired.
+Custom marker commands (dynamic, registered via `syncCustomMarkerCommands`):
+- `markr:apply-custom-<id>` — "Apply "<label>" marker" — one per configured custom marker.
+- Commands are torn down and re-registered on every `updateSettings()` call, using the official `Plugin.removeCommand` API (stable since Obsidian 1.7.2).
 
 **Apply / cycle semantics: replace, not toggle, not insert.** If the line
 already has a marker, it is replaced; otherwise the trigger is prepended after
 the list bullet. Both commands rewrite only the trigger region with
 `editor.replaceRange` and then re-place the caret by the prefix-length delta, so
 the cursor stays where it was rather than jumping to column 0.
-
-**Command palette UX (target).** Each apply-command should get a colored chip
-preview; the label is the human-readable marker name ("Apply question"), not the
-trigger character.
 
 ### 7.6 Export-aware rendering (investigate during v1)
 
@@ -591,10 +584,9 @@ The reading-view post-processor's output is already PDF/HTML-export friendly bec
 
 ### 7.7 Items still to decide
 
-1. **Color picker UX in the Markers section.** Native `<input type="color">` is free but ugly. Curated palette (8–10 pre-tuned light/dark ramps) is more opinionated but produces consistently good-looking output. Lean curated.
-2. **Migration from the original plugin.** Read its `data.json` on first run, offer to import. Nice-to-have, not blocking.
-3. **Bundled custom defaults** (alongside priority): `?`, `~`, `@`. Anything else?
-4. **Mobile.** `isDesktopOnly: false`. Recommended yes — we follow the iOS rules anyway.
+1. **Migration from the original plugin.** Read its `data.json` on first run, offer to import. Nice-to-have, not blocking.
+2. **Bundled custom defaults** (alongside priority): `?`, `~`. Anything else?
+3. **Mobile.** `isDesktopOnly: false`. Recommended yes — we follow the iOS rules anyway.
 
 ---
 
@@ -603,8 +595,7 @@ The reading-view post-processor's output is already PDF/HTML-export friendly bec
 Ideas explicitly out of v1 scope, captured so we don't lose them:
 
 - **Autosuggest dropdown** (issue #76) — typing `-` + space triggers a popup of available markers. Doable with Obsidian's `EditorSuggest` API.
-- **Aliases per marker** (issue #77) — type fields already in `MarkerDef` for custom markers. Wire up matcher + settings UI in v1.1.
-- **Multi-character non-priority triggers** — markers like `>` for "decision" or `??` for "needs research." The trie supports it; we just need the settings UI to allow it.
+- **Nested marker inheritance** (§7.3) — visual grouping via inherited faint tint on child items; not yet built.
 - **Per-folder or per-tag overrides** — "in folders matching X, swap marker `!` for marker `urgent`."
 - **"Convert to native callout" command** — rewrites `- ! Important thing` as `> [!important] Important thing`.
 - **Frontmatter scope** — `markr: priority-only` to selectively enable categories per-note.
@@ -614,11 +605,9 @@ Ideas explicitly out of v1 scope, captured so we don't lose them:
 
 ## 9. Development
 
-The repo is bootstrapped — scaffold, build pipeline, and the file layout in
-§3.1 are in place. Day-to-day:
+The repo is bootstrapped — scaffold, build pipeline, and the file layout in §3.1 are in place. Day-to-day:
 
-- `npm run dev` — esbuild in watch mode (inline sourcemaps). Produces `main.js`
-  at the repo root.
+- `npm run dev` — esbuild in watch mode (inline sourcemaps). Produces `main.js` at the repo root.
 - `npm run build` — `tsc -noEmit` typecheck, then a production esbuild.
 - `npm run lint` — `eslint` (`eslint-plugin-obsidianmd` + typescript-eslint).
 - `npm run version` — bumps `manifest.json` / `versions.json` / `package.json`.
@@ -637,9 +626,7 @@ load dev plugins.
 - CM6 decorations — https://codemirror.net/docs/ref/#view.Decoration
 - Hot Reload — https://github.com/pjeby/hot-reload
 
-**Not yet built:** inline marker editing + `settings/iconPicker.ts`,
-per-custom-marker apply commands, nested inheritance (§7.3), export spike
-(§7.6), the §4.8 benchmark pass.
+**Still unbuilt:** nested inheritance (§7.3).
 
 ---
 
@@ -649,39 +636,21 @@ per-custom-marker apply commands, nested inheritance (§7.3), export spike
 - **v0.2** — added committed feature scope: multi-char triggers with Eisenhower preset, hover tooltips, nested inheritance (experimental), export investigation. Type system updated for variable-length triggers; matcher switches from `Map` lookup to trie.
 - **v0.3** — major revision based on design review:
   - **Renamed** plugin to *Markr* (ID `markr`). "Callouts" collides with Obsidian's native callouts; "marker" is more accurate.
-  - **Eisenhower preset removed**, replaced with first-class **Priority Levels** (`!` / `!!` / `!!!`, red ramp, longest-match-wins). The framework was a stand-in for the underlying need: visual priority in flat project logs.
-  - **Type system reshaped** around a `kind: "priority" | "custom"` discriminant on `MarkerDef` instead of a separate presets field. Cleaner, removes runtime merging logic.
+  - **Eisenhower preset removed**, replaced with first-class **Priority Levels** (`!` / `!!` / `!!!`, red ramp, longest-match-wins).
+  - **Type system reshaped** around a `kind: "priority" | "custom"` discriminant on `MarkerDef`.
   - **CSS class prefix** changed from `lh-` to `mr-`.
-  - **Squircle corners** added via `@supports (corner-shape: squircle)` — Chromium ships it (every Obsidian client), Safari/Firefox fall back gracefully.
-  - **Settings UX spec** added (§7.4): five-section layout with consistent borderless-until-focus row chrome, live preview chips, locked priority rows.
+  - **Squircle corners** added via `@supports (corner-shape: squircle)`.
   - **Commands & hotkeys spec** added (§7.5): dynamic per-marker apply commands, universal remove + cycle commands, replace semantics, no default hotkeys.
-  - **Backlog (§8)** separated from committed v1 scope — autosuggest, aliases, multi-char custom triggers, frontmatter scope all moved here.
-  - **Date pills** considered and dropped from v1.
-- **v0.4** — performance plan restructured into tiered approach:
-  - **§4 fully rewritten** with the four cost centers (matching, syntax walk, decoration set, DOM apply), the viewport-already-handles-file-size explanation, and explicit tiers: Tier 0 (baseline), Tier 1 (free wins shipped in v1), Tier 2 (state field, conditional on benchmarks), and Don't-Do traps.
-  - **Tier 1 wins** added: skip-on-no-meaningful-change, first-char pre-filter, cursor-line cache.
-  - **`maxFileSizeKB`** reframed as a pathological-case safety valve, not a primary optimization.
-  - **Non-goals** made explicit (§4.7) so future contributors don't accidentally violate them.
-  - **Benchmarks** expanded with a 50k-line pathological case as the Tier-2 trigger.
-  - **Icon picker empty state** simplified (§7.4): no `ti-photo` placeholder. The slot renders truly empty when no icon is set; hover/focus underline keeps it discoverable.
-- **v0.5** — renamed plugin from *List Markers* to **Markr** throughout. Plugin ID is now `markr`, CSS class prefix is `mr-`, data attribute is `data-markr`, main class is `MarkrPlugin`. Submission readiness section (§6) updated with new metadata.
-- **v0.6** — added **§9 "Getting started"**, a self-contained bootstrap playbook for local development. Covers prerequisites, scaffolding from the official sample plugin, test vault setup, symlink workflow, the hello-world smoke test, Hot Reload integration, and an ordered implementation sequence (steps 1–14) that maps each source file to the spec section that defines it. Iteration history renumbered to §10.
-- **v0.7** — trimmed and reconciled the spec with the shipped code:
-  - **§3.2** updated to the real type shape — schema `version` is a bumpable
-    number (stale data is discarded on load, not migrated), `MarkerColor`
-    carries `{bg, fg}` `ColorPair`s, no `appearance` block.
-  - **§3.3–§3.5 rewritten** to the actual rendering architecture after a
-    patch-by-patch detour was unwound: `Decoration.line` for the full-width
-    line background + a layout-neutral `.mr-badge` `Decoration.mark` (priority)
-    or `BadgeWidget` replace (icon markers) for the trigger. Added §3.3a
-    (`matchListLine` — a positionally-scoped regex, sufficient without
-    `syntaxTree`) and §3.3b (`BadgeWidget`). Recorded the dead-ends (inline tint
-    span over the body, fixed-width swap widget) as a warning — they broke
-    link/code/bracket rendering, wrapped-line backgrounds, and cursor mapping.
-  - **§7.1** — priority levels share a single colour, distinguished by glyph
-    count; priority markers have `icon: null` and render as text badges.
-  - **§7.4 / §7.5** — settings is three sections (Debug / Markers /
-    Performance); commands are the three priority applies, one
-    `cycle-priority`, and `remove` — all cursor-preserving via `replaceRange`.
-  - **§9** — the bootstrap playbook is done; collapsed to a short Development
-    section (build commands, dev loop, what's still unbuilt).
+  - **Backlog (§8)** separated from committed v1 scope.
+- **v0.4** — performance plan restructured into tiered approach (§4 fully rewritten).
+- **v0.5** — renamed plugin from *List Markers* to **Markr** throughout.
+- **v0.6** — added §9 "Getting started" bootstrap playbook (later collapsed to Development).
+- **v0.7** — trimmed and reconciled the spec with the shipped code: real type shapes, actual rendering architecture, actual commands.
+- **v0.8** — reconciled with current codebase after settings polish pass:
+  - **Settings UI built**: always-visible inline rows, auto-save on blur, locked priority rows, icon picker inline in `editor.ts`, color circles, row background tint. §7.4 rewritten to describe the built UI.
+  - **Custom marker commands wired**: `syncCustomMarkerCommands` tears down and re-registers on every `updateSettings()`. §7.5 updated.
+  - **Type cleanup**: removed `enabled` from custom `MarkerDef`, removed `version`, `maxFileSizeKB`, `nestedInheritance`, `enableAutosuggest` from `PluginSettings`. Lenient merge replaces schema version check.
+  - **Priority labels**: Important / Urgent / Critical.
+  - **File layout updated**: `tab.ts` removed, `editor.ts` + `index.ts` added, `IconPickerModal` inline.
+  - **TS checklist corrected** to match actual `tsconfig.json` flags.
+  - **§4** cleaned of `maxFileSizeKB` sentinel (field removed from type).

@@ -4,8 +4,7 @@
    Editor: line background is a `Decoration.line` on the block-level line
    element — it never wraps inline content, so it can't conflict with
    Obsidian's own link/code/bracket decorations and it handles line-wrapping
-   natively. A `.mr-line-lead` mark over the list-marker prefix paints the
-   editor's own background, so the tint visually starts at the badge.
+   natively.
 
    Reading view: a single `.mr-rv-row` wrapper per marked list item owns
    background, padding, and width. The wrapper holds only the item's own
@@ -21,11 +20,9 @@
 :root {
 	--mr-line-radius: 6px;
 	--mr-badge-radius: 4px;
-}
-
-body[data-markr] .mr-colorized {
-	--mr-marker-bg: var(--mr-marker-bg-light);
-	--mr-marker-fg: var(--mr-marker-fg-light);
+	--mr-settings-row-radius: 12px;
+	--mr-settings-preview-size: 1.2rem;
+	--mr-settings-icon-size: 24px;
 }
 
 body.theme-light[data-markr] .mr-colorized {
@@ -113,7 +110,9 @@ body.theme-dark[data-markr] .mr-colorized {
 @supports (corner-shape: squircle) {
 	.cm-line.mr-line,
 	.mr-rv-row,
-	.mr-badge {
+	.mr-badge,
+	.mr-badge--settings,
+	.mr-settings-icon-btn {
 		corner-shape: squircle;
 	}
 }
@@ -122,7 +121,7 @@ body.theme-dark[data-markr] .mr-colorized {
    and icons each get their own width). Shared by the always-on priority mark
    and the icon replace-widget. */
 .mr-badge {
-	background: var(--mr-marker-bg, transparent);
+	background: var(--mr-badge-bg, transparent);
 	color: var(--mr-marker-fg, inherit);
 	border-radius: var(--mr-badge-radius);
 
@@ -177,4 +176,374 @@ body.theme-dark[data-markr] .mr-colorized {
 	stroke-width: 2.25;
 	flex-shrink: 0;
 	display: block;
+}
+
+/* ── Settings UI ─────────────────────────────────────────────────────────── */
+
+.setting-item.mr-settings-marker-row {
+	overflow: visible;
+	box-sizing: border-box;
+}
+
+.setting-item-heading + .setting-item.mr-settings-marker-row {
+	margin-top: 0.5rem;
+}
+
+.setting-item.mr-settings-marker-row {
+	display: flex;
+	align-items: center;
+	justify-content: flex-start;
+	gap: 0.9rem;
+	margin: 0.6rem 0;
+	padding: 0.55rem 0.9rem;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--mr-settings-row-radius);
+	background: var(--background-secondary);
+	box-shadow: 0 1px 0
+		color-mix(in srgb, var(--background-primary) 65%, transparent);
+	transition:
+		border-color 120ms ease,
+		background-color 120ms ease,
+		box-shadow 120ms ease;
+}
+
+
+.setting-item.mr-settings-marker-row.mr-colorized {
+	background: color-mix(
+		in oklch,
+		var(--mr-marker-bg, transparent) 28%,
+		transparent
+	);
+	border-color: color-mix(
+		in srgb,
+		var(--mr-marker-bg) 22%,
+		var(--background-modifier-border)
+	);
+}
+
+
+body[data-markr] .setting-item.mr-settings-marker-row .setting-item-info {
+	display: flex;
+	align-items: center;
+	flex: 0 0 auto;
+	min-width: 0;
+	margin-right: 0;
+	padding: 0;
+	overflow: visible;
+}
+
+body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+	flex: 1 1 auto;
+	flex-wrap: wrap;
+	justify-content: flex-start;
+}
+
+body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .extra-setting-button {
+	margin-left: auto;
+	width: 28px;
+	padding-inline: 0;
+}
+
+.setting-item.mr-settings-marker-row .setting-item-name {
+	display: flex;
+	align-items: center;
+	font-size: inherit;
+	line-height: inherit;
+	padding: 0;
+	margin: 0;
+}
+
+.setting-item.mr-settings-marker-row .setting-item-description {
+	display: none;
+}
+
+.setting-group .setting-item.mr-settings-marker-row:first-child {
+	padding-top: 0.55rem;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.setting-group .setting-item.mr-settings-marker-row:last-child {
+	padding-bottom: 0.55rem;
+}
+
+/* ── Marker badge in settings ────────────────────────────────────────────── */
+
+.mr-badge--settings {
+	inline-size: var(--mr-settings-preview-size);
+	block-size: var(--mr-settings-preview-size);
+	min-width: var(--mr-settings-preview-size);
+	max-width: var(--mr-settings-preview-size);
+	height: var(--mr-settings-preview-size);
+	padding: 0;
+	border-radius: var(--mr-badge-radius);
+	/* use fixed font-size so em-based icon sizes don't compound */
+	font-size: 0.78rem;
+	line-height: 1;
+	vertical-align: middle;
+	box-shadow: inset 0 0 0 1px
+		color-mix(in srgb, var(--mr-marker-fg, currentColor) 14%, transparent);
+}
+
+/* Icon sized relative to the badge dimension, not to the compounded em */
+.mr-badge--settings.mr-badge-icon > svg,
+.mr-badge--settings.mr-badge-icon > .svg-icon {
+	width: calc(var(--mr-settings-preview-size) * 0.78);
+	height: calc(var(--mr-settings-preview-size) * 0.78);
+	stroke-width: var(--icon-s-stroke-width);
+}
+
+/* Placeholder badge for the creator ghost row */
+.mr-settings-creator-badge {
+	background: transparent;
+	box-shadow: inset 0 0 0 1px var(--background-modifier-border);
+}
+
+
+.setting-item.mr-settings-marker-row--removing {
+	animation: mr-row-remove 150ms ease-in forwards;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+@keyframes mr-row-remove {
+	0% {
+		opacity: 1;
+		max-height: 300px;
+		margin-top: 0.6rem;
+		margin-bottom: 0.6rem;
+		transform: translateX(0);
+	}
+	35% {
+		opacity: 0;
+		transform: translateX(6px);
+	}
+	100% {
+		opacity: 0;
+		max-height: 0;
+		margin-top: 0;
+		margin-bottom: 0;
+		padding-top: 0;
+		padding-bottom: 0;
+		border-width: 0;
+		box-shadow: none;
+	}
+}
+
+/* Creator ghost row slides in from above */
+.setting-item.mr-settings-marker-row--creator {
+	animation: mr-row-in 160ms cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+@keyframes mr-row-in {
+	from {
+		opacity: 0;
+		transform: translateY(-8px) scale(0.98);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+/* ── Editor inputs ───────────────────────────────────────────────────────── */
+
+.mr-settings-input {
+	min-width: 0;
+}
+
+.mr-settings-input--trigger {
+	width: 4.25rem;
+	flex: 0 0 4.25rem;
+}
+
+.mr-settings-input--label {
+	width: 12rem;
+	flex: 0 1 12rem;
+}
+
+/* ── Color circles ───────────────────────────────────────────────────────── */
+
+.mr-settings-icon-btn + .mr-settings-color-wrap {
+	margin-left: 0.4rem;
+}
+
+.mr-settings-color-wrap {
+	position: relative;
+	width: 1.35rem;
+	height: 1.35rem;
+	border-radius: 50%;
+	overflow: hidden;
+	flex-shrink: 0;
+	cursor: pointer;
+	/* outline sits outside overflow-hidden so it is never clipped */
+	outline: 1.5px solid var(--background-modifier-border);
+	outline-offset: 1.5px;
+	transition: outline-color 120ms ease;
+}
+
+.mr-settings-color-wrap--unset::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	background: repeating-linear-gradient(
+		-45deg,
+		var(--background-modifier-border) 0px,
+		var(--background-modifier-border) 1.5px,
+		transparent 1.5px,
+		transparent 6px
+	);
+	pointer-events: none;
+	z-index: 1;
+}
+
+.mr-settings-color-wrap:hover:not(:has(input:disabled)) {
+	outline-color: var(--background-modifier-border-hover);
+}
+
+.mr-settings-color-wrap:has(input:disabled) {
+	cursor: not-allowed;
+	pointer-events: none;
+	outline-color: color-mix(in srgb, var(--background-modifier-border) 50%, transparent);
+}
+
+input.mr-settings-input--color {
+	display: block;
+	width: 100% !important;
+	height: 100%;
+	padding: 0;
+	border: none;
+	background: none;
+	cursor: pointer;
+	-webkit-appearance: none;
+	appearance: none;
+}
+
+input.mr-settings-input--color::-webkit-color-swatch-wrapper {
+	padding: 0;
+	border-radius: 0;
+}
+
+/* Override Obsidian: kills --swatch-shadow inset ring, --swatch-radius, and fixed height/width */
+input.mr-settings-input--color::-webkit-color-swatch,
+input.mr-settings-input--color:hover::-webkit-color-swatch,
+input.mr-settings-input--color:focus::-webkit-color-swatch,
+input.mr-settings-input--color:focus-visible::-webkit-color-swatch {
+	border: none;
+	border-radius: 0;
+	box-shadow: none;
+	height: 100%;
+	width: 100%;
+}
+
+input.mr-settings-input--color::-moz-color-swatch {
+	border: none;
+	border-radius: 0;
+}
+
+/* ── Icon picker button ──────────────────────────────────────────────────── */
+
+.mr-settings-icon-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 26px;
+	height: 26px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	background: transparent;
+	cursor: pointer;
+	box-sizing: border-box;
+	margin-left: 0.4rem;
+	transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.mr-settings-icon-btn svg,
+.mr-settings-icon-btn .svg-icon {
+	width: 0.9rem;
+	height: 0.9rem;
+	flex-shrink: 0;
+	display: block;
+	stroke-width: var(--icon-s-stroke-width);
+}
+
+.mr-settings-icon-btn.mr-colorized {
+	color: var(--mr-marker-fg);
+}
+
+.mr-settings-icon-btn:disabled {
+	background: color-mix(in srgb, var(--background-modifier-border) 25%, transparent);
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
+/* Disabled text inputs — muted fill signals read-only */
+.mr-settings-input:disabled {
+	background: color-mix(in srgb, var(--background-modifier-border) 25%, transparent);
+	color: var(--text-muted);
+	cursor: not-allowed;
+	pointer-events: none;
+}
+
+/* Lock icon — matches .clickable-icon.extra-setting-button hit area */
+.mr-settings-lock-icon {
+	margin-left: auto;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+	width: 28px;
+	height: 28px;
+	color: var(--text-faint);
+}
+
+.mr-settings-lock-icon svg,
+.mr-settings-lock-icon .svg-icon {
+	width: 15px;
+	height: 15px;
+}
+
+/* ── Icon picker modal suggestions ──────────────────────────────────────── */
+
+.mr-icon-suggestion {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+}
+
+.mr-icon-suggestion-preview {
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 1.1rem;
+	height: 1.1rem;
+}
+
+.mr-icon-suggestion-preview svg,
+.mr-icon-suggestion-preview .svg-icon {
+	width: 1rem;
+	height: 1rem;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+
+@media (max-width: 720px) {
+	.setting-item.mr-settings-marker-row {
+		flex-wrap: wrap;
+		align-items: flex-start;
+	}
+
+	.setting-item.mr-settings-marker-row .setting-item-control {
+		width: 100%;
+		justify-content: flex-end;
+	}
+
+	.mr-settings-input--trigger,
+	.mr-settings-input--label {
+		flex-basis: auto;
+	}
 }
