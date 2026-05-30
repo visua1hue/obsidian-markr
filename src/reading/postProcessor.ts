@@ -58,6 +58,21 @@ function renderRow(
 	placeBadge(row, badge);
 
 	li.setAttribute(PROCESSED_ATTR, target.kind);
+
+	// Always apply color vars so CSS rules for hasNested cases can use
+	// --mr-marker-bg (task >p band, numbered neg-margin extension).
+	li.classList.add("mr-colorized", `mr-line-${match.def.id}`);
+	li.setCssProps(markerCssVars(match.def.color));
+
+	// mr-rv-li: full-band on <li> only for single-line items (pCount ≤ 1, no
+	// nested list). Items with nested lists keep band scoped to label row only
+	// (task → lead <p>; numbered → .mr-rv-row neg-margin) to avoid tinting
+	// nested content.
+	const pCount = li.querySelectorAll(":scope > p").length;
+	const hasNested = !!li.querySelector(":scope > ul, :scope > ol");
+	if (pCount <= 1 && !hasNested) {
+		li.classList.add("mr-rv-li");
+	}
 }
 
 /* ------------------------------------------------------------------------ */
@@ -161,6 +176,11 @@ function buildBadge(match: MatchResult, settings: PluginSettings): HTMLElement {
 /* Row                                                                      */
 /* ------------------------------------------------------------------------ */
 
+/* The .mr-rv-row is injected where the item's inline label text used to be, so
+   it MUST stay layout-neutral — its CSS carries zero vertical margin/padding/
+   transform (the tint band is an inset box-shadow). That is what keeps tight
+   (<li>) and loose (lead <p>) lists rendering with identical spacing and matches
+   Live Preview; never give this element a vertical box. See styles.css. */
 function buildRow(target: RowTarget, match: MatchResult): HTMLElement {
 	const row = document.createElement("span");
 	row.className = `mr-rv-row mr-rv-row--${target.kind} mr-rv-enter mr-line-${match.def.id} mr-colorized`;
@@ -177,15 +197,13 @@ function buildRow(target: RowTarget, match: MatchResult): HTMLElement {
 }
 
 function assembleTaskRow(target: RowTarget, row: HTMLElement): HTMLElement {
-	const host = document.createElement("span");
-	host.className = "mr-rv-host";
 	const checkbox = target.checkbox!;
+	// Insert row immediately after the checkbox; Obsidian's native checkbox
+	// CSS selector (ul > li.task-list-item > p > .task-list-item-checkbox)
+	// remains unbroken since the checkbox stays in its original parent.
+	target.contentHost.insertBefore(row, checkbox.nextSibling);
 
-	target.contentHost.insertBefore(host, checkbox);
-	host.appendChild(checkbox);
-	host.appendChild(row);
-
-	let node: ChildNode | null = host.nextSibling;
+	let node: ChildNode | null = row.nextSibling;
 	while (node && !isBlockBoundary(node)) {
 		const next = node.nextSibling;
 		row.appendChild(node);

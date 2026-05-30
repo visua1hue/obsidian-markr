@@ -35,16 +35,15 @@ body.theme-dark[data-markr] .mr-colorized {
 	--mr-marker-fg: var(--mr-marker-fg-dark);
 }
 
-/* Editor line background — Decoration.line on the .cm-line. */
-.cm-line.mr-line {
-	box-shadow:
-		inset 0 2px 0 var(--background-primary),
-		inset 0 -2px 0 var(--background-primary);
-}
+/* Shared marker band — color, radius, and the inset "floating band" mask are
+   shared across editor lines and reading-view rows. CSS variables
+   (--mr-marker-bg / --mr-marker-fg) are bound by cssVars.ts via the
+   `.mr-line-<id>` class both surfaces carry.
 
-/* Shared tint between editor lines and reading-view rows. CSS variables
-   (--mr-marker-bg / --mr-marker-fg) are bound by cssVars.ts through the
-   `.mr-line-<id>` selector that both surfaces carry. */
+   INVARIANT: .mr-rv-row must never carry vertical margin / padding / transform.
+   It is injected where inline label text was, so any vertical box stacks on the
+   <li>'s native metrics and breaks margin-collapse list spacing. The inset mask
+   provides visual separation at zero layout cost. */
 .cm-line.mr-line,
 .mr-rv-row {
 	background: color-mix(
@@ -53,62 +52,202 @@ body.theme-dark[data-markr] .mr-colorized {
 		transparent
 	);
 	border-radius: var(--mr-line-radius);
-	margin-block: 2px;
+	box-shadow:
+		inset 0 2px 0 var(--background-primary),
+		inset 0 -2px 0 var(--background-primary);
 	transition: background-color 120ms ease-out;
 }
 
-/* Reading-view row — the per-item background lives on this element, never on
-   the <li>. Block-level so its tint spans the full content-area width
-   regardless of inline label length. Padding insets the badge from the tint
-   edges and matches the editor's roomier line box. */
+/* Editor line owns its box — CM6 measures it, so vertical margin is safe here
+   and gives the gap between consecutive marked lines. */
+.cm-line.mr-line {
+	margin-block: 2px;
+}
+
+/* Reading-view row — layout-neutral per the invariant above. Carries the band
+   for loose-list items (where the row is inside a lead <p>, and putting the
+   tint on the <li> would bleed into continuation paragraphs). For tight lists
+   and tasks the band lives on li.mr-rv-li (below) and this rule's background
+   is cleared by the li.mr-rv-li override. */
 .mr-rv-row {
 	display: block;
-	padding: 0.15em 0.3em;
-}
-
-/* Bullet and numbered rows sit flush with the text column already (the list
-   marker lives outside the <li>'s content box). Zero out the inline padding
-   so the badge aligns with the text column rather than nudging in by 0.3em. */
-.mr-rv-row--bullet {
-	transform: translateY(-0.3em);
-}
-
-.mr-rv-row--bullet,
-.mr-rv-row--numbered {
+	margin-block: 0;
+	padding-block: 0;
 	padding-inline: 0;
-	padding-top: 0.08em;
-	padding-bottom: 0.22em;
+	line-height: inherit;
 }
 
-/* Task rows live in a flex sibling host (.mr-rv-host) alongside the
-   checkbox. flex:1 lets the row claim the remaining content-area width —
-   the tint then spans the row, not just the inline text — while the
-   checkbox keeps its native gutter offset (see compatibility selector
-   below). */
-.mr-rv-host {
-	display: flex;
-	align-items: baseline;
-	min-width: 0;
+/* Tight + task reading-view <li>: band on the <li> itself. The post-processor
+   adds this class for any single-line item (pCount ≤ 1, no nested list).
+   --mr-band-bg cascades to ::before on numbered items without duplicating
+   color-mix(). */
+li.mr-rv-li {
+	--mr-band-bg: color-mix(in oklch, var(--mr-marker-bg, transparent) 28%, transparent);
+	background: var(--mr-band-bg);
+	border-radius: var(--mr-line-radius);
+	box-shadow:
+		inset 0 2px 0 var(--background-primary),
+		inset 0 -2px 0 var(--background-primary);
+	transition: background-color 120ms ease-out;
 }
 
+/* Bullet + task items: zero the Obsidian margin and replace it with equal
+   padding so the <li> box spans from the <ul> left edge to the right edge
+   while every child (bullet span, checkbox, text) stays at its original position. */
+li.mr-rv-li[data-mr-row="bullet"],
+li.mr-rv-li[data-mr-row="task"] {
+	margin-inline-start: 0 !important;
+	padding-inline-start: 3ch;
+}
+
+/* Nested bullet/task items: pull band to outer left edge. The nested <ul>
+   sits inside parent <li> content area (parent padding = 3ch), so the nested
+   <ul> left edge is 3ch from outer left. Pulling back by -3ch reaches outer
+   left; adding 3ch back to padding keeps content at the same visual position
+   (net indent from outer left = var(--list-indent), unchanged). */
+.markdown-rendered ul ul > li.mr-rv-li[data-mr-row="bullet"],
+.markdown-rendered ol ul > li.mr-rv-li[data-mr-row="bullet"],
+.markdown-rendered ul ul > li.mr-rv-li[data-mr-row="task"],
+.markdown-rendered ol ul > li.mr-rv-li[data-mr-row="task"] {
+	margin-inline-start: -3ch !important;
+	padding-inline-start: calc(3ch + var(--list-indent, 2.25em));
+}
+
+/* Numbered items: the <ol> ::marker renders outside the <li> box (list-style-
+   position: outside). Keep Obsidian's original margin-inline-start so the
+   counter stays at its natural gutter position; extend the band left with
+   ::before to cover the counter. The ::marker renders on top of ::before so
+   the number remains visible with a colored background behind it. */
+li.mr-rv-li[data-mr-row="numbered"] {
+	position: relative;
+	border-start-start-radius: 0;
+	border-end-start-radius: 0;
+}
+
+li.mr-rv-li[data-mr-row="numbered"]::before {
+	content: '';
+	position: absolute;
+	inset-block: 0;
+	inset-inline-end: 100%;
+	width: 3ch;
+	background: var(--mr-band-bg);
+	border-start-start-radius: var(--mr-line-radius);
+	border-end-start-radius: var(--mr-line-radius);
+	box-shadow:
+		inset 0 2px 0 var(--background-primary),
+		inset 0 -2px 0 var(--background-primary);
+	transition: background-color 120ms ease-out;
+}
+
+.markdown-rendered ol ol > li.mr-rv-li[data-mr-row="numbered"]::before,
+.markdown-rendered ul ol > li.mr-rv-li[data-mr-row="numbered"]::before {
+	width: calc(3ch + var(--list-indent, 2.25em));
+}
+
+/* li.mr-rv-li owns the visual band — clear it from the inner row. */
+li.mr-rv-li .mr-rv-row {
+	background: none;
+	box-shadow: none;
+}
+
+/* Bullets with nested children (hasNested=true → no mr-rv-li): zero <li>
+   margin so the <li> box reaches outer left; extend .mr-rv-row (display:block)
+   left with negative margin to cover the bullet gutter. Content padding
+   keeps badge + text at their original visual position. */
+li[data-mr-row="bullet"]:not(.mr-rv-li) {
+	margin-inline-start: 0 !important;
+	padding-inline-start: 3ch;
+}
+
+.markdown-rendered ul ul > li[data-mr-row="bullet"]:not(.mr-rv-li),
+.markdown-rendered ol ul > li[data-mr-row="bullet"]:not(.mr-rv-li) {
+	padding-inline-start: var(--list-indent, 2.25em);
+}
+
+li[data-mr-row="bullet"]:not(.mr-rv-li) .mr-rv-row {
+	margin-inline-start: -3ch;
+	padding-inline-start: 3ch;
+}
+
+.markdown-rendered ul ul > li[data-mr-row="bullet"]:not(.mr-rv-li) .mr-rv-row,
+.markdown-rendered ol ul > li[data-mr-row="bullet"]:not(.mr-rv-li) .mr-rv-row {
+	margin-inline-start: calc(-1 * var(--list-indent, 2.25em));
+	padding-inline-start: var(--list-indent, 2.25em);
+}
+
+/* Tasks with nested children (hasNested=true → no mr-rv-li). Two cases:
+   Tight list (no <p>): inline content + block <ul> in same <li>. Band via
+   ::before positioned absolute at height:1lh covers only the label row.
+   Loose list (has <p>): band on the lead <p> which wraps label content only.
+   Both: band cleared from .mr-rv-row--task (inline, can't be full-width). */
+li[data-mr-row="task"]:not(.mr-rv-li) {
+	margin-inline-start: 0 !important;
+	padding-inline-start: 3ch;
+}
+
+.markdown-rendered ul ul > li[data-mr-row="task"]:not(.mr-rv-li),
+.markdown-rendered ol ul > li[data-mr-row="task"]:not(.mr-rv-li) {
+	padding-inline-start: var(--list-indent, 2.25em);
+}
+
+/* Tight task: ::before band limited to 1lh so nested <ul> stays untinted. */
+li[data-mr-row="task"]:not(.mr-rv-li):not(:has(> p)) {
+	position: relative;
+	isolation: isolate;
+}
+
+li[data-mr-row="task"]:not(.mr-rv-li):not(:has(> p))::before {
+	content: '';
+	position: absolute;
+	inset-block-start: 0;
+	inset-inline: 0;
+	height: 1lh;
+	background: color-mix(in oklch, var(--mr-marker-bg, transparent) 28%, transparent);
+	border-radius: var(--mr-line-radius);
+	box-shadow:
+		inset 0 2px 0 var(--background-primary),
+		inset 0 -2px 0 var(--background-primary);
+	transition: background-color 120ms ease-out;
+	z-index: -1;
+}
+
+/* Loose task (has <p>): band on lead <p>, nested <ul> is a sibling so untinted. */
+li[data-mr-row="task"]:not(.mr-rv-li) > p {
+	background: color-mix(in oklch, var(--mr-marker-bg, transparent) 28%, transparent);
+	border-radius: var(--mr-line-radius);
+	box-shadow:
+		inset 0 2px 0 var(--background-primary),
+		inset 0 -2px 0 var(--background-primary);
+	transition: background-color 120ms ease-out;
+}
+
+li[data-mr-row="task"]:not(.mr-rv-li) .mr-rv-row {
+	background: none;
+	box-shadow: none;
+}
+
+/* Numbered items with nested content: extend .mr-rv-row left via negative
+   margin to cover the ::marker counter (matches the 3ch ::before width used
+   by mr-rv-li numbered items). display:block on the row makes neg-margin work;
+   overflow:visible on <p>/<li> allows the box to extend into the gutter. */
+li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
+	margin-inline-start: -3ch;
+	padding-inline-start: 3ch;
+}
+
+/* Task .mr-rv-row is inline so it sits beside the checkbox without a flex
+   wrapper; Obsidian's native checkbox CSS (ul > li.task-list-item > p >
+   .task-list-item-checkbox) applies unmodified. */
 .mr-rv-row--task {
-	flex: 1 1 0;
-	min-width: 0;
-	padding-inline: 0;
-}
-
-/* Compatibility hook: Obsidian's reading-view CSS positions the task
-   checkbox via
-       ul > li.task-list-item > [p >] .task-list-item-checkbox
-   which no longer matches once the checkbox is wrapped in .mr-rv-host.
-   Re-apply the same gutter offset for any checkbox inside the wrapper. */
-.mr-rv-host > .task-list-item-checkbox {
-	margin-inline-start: calc(var(--checkbox-size) * -1.5);
-	flex-shrink: 0;
+	display: inline;
 }
 
 @supports (corner-shape: squircle) {
 	.cm-line.mr-line,
+	li.mr-rv-li,
+	li.mr-rv-li[data-mr-row="numbered"]::before,
+	li[data-mr-row="task"]:not(.mr-rv-li):not(:has(> p))::before,
+	li[data-mr-row="task"]:not(.mr-rv-li) > p,
 	.mr-rv-row,
 	.mr-badge,
 	.mr-badge--settings,
@@ -548,9 +687,10 @@ input.mr-settings-input--color::-moz-color-swatch {
 		}
 	}
 
-	/* Reading-view row entrance. Opacity-only — .mr-rv-row--bullet carries
-	   transform: translateY(-0.3em) as a base style; animating transform here
-	   would snap back to that value at animation end. */
+	/* Reading-view row entrance. Opacity-only by design: the row is
+	   layout-neutral (zero vertical box; the band is an inset box-shadow), so a
+	   transform or height animation would perturb the inherited line metrics and
+	   reintroduce the spacing jump this refactor removed. */
 	.mr-rv-row.mr-rv-enter {
 		animation: mr-rv-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
 	}
