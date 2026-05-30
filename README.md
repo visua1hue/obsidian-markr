@@ -17,19 +17,16 @@ Each marker is configured in settings — choose a trigger, label, Lucide icon, 
 
 ## Install
 
+**Official Store:**
+
+1. Open **Settings → Community plugins → Browse**
+2. Search for **Markr** and install
+
 **Manual:**
 
 1. Download `main.js`, `styles.css`, and `manifest.json` from the [latest release](https://github.com/visua1hue/obsidian-markr/releases/latest)
 2. Copy the files to `<vault>/.obsidian/plugins/markr/`
 3. Enable Markr in **Settings → Community plugins**
-
-**BRAT:**
-
-```
-visua1hue/obsidian-markr
-```
-
-Install [BRAT](https://github.com/TfTHacker/obsidian42-brat), add the repo above, then enable Markr in **Settings → Community plugins**.
 
 ## License
 

@@ -27,6 +27,10 @@ export class MarkrSettingTab extends PluginSettingTab {
 		);
 	}
 
+	override hide(): void {
+		this.editor.closeCreator();
+	}
+
 	display(): void {
 		const { containerEl } = this;
 		const restoreScrollTop = this.pendingScrollTop;
@@ -63,7 +67,7 @@ export class MarkrSettingTab extends PluginSettingTab {
 									...settings,
 									priority: { enabled: value },
 								}),
-							);
+							).then(() => this.redisplayPreservingScroll());
 						}),
 				);
 		});
@@ -149,10 +153,12 @@ export class MarkrSettingTab extends PluginSettingTab {
 			button.onClick(() => this.editor.openCreator());
 		});
 
-		for (const marker of priorityMarkers(this.plugin.settings.markers)) {
-			group.addSetting((setting: Setting) => {
-				this.editor.configurePrioritySetting(setting, marker);
-			});
+		if (this.plugin.settings.priority.enabled) {
+			for (const marker of priorityMarkers(this.plugin.settings.markers)) {
+				group.addSetting((setting: Setting) => {
+					this.editor.configurePrioritySetting(setting, marker);
+				});
+			}
 		}
 
 		for (const marker of customMarkers(this.plugin.settings.markers)) {

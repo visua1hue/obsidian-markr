@@ -162,6 +162,12 @@ export class MarkerEditor {
 		this.creatorRefs = null;
 	}
 
+	closeCreator(): void {
+		this.creatorOpen = false;
+		this.creatorDraft = { ...DEFAULT_DRAFT };
+		this.creatorRefs = null;
+	}
+
 	openCreator(): void {
 		if (this.creatorOpen) return;
 		this.creatorOpen = true;
