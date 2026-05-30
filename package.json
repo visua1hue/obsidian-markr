@@ -1,6 +1,6 @@
 {
   "name": "markr",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Prioritize list items with inline markdown.",
   "main": "main.js",
   "type": "module",
