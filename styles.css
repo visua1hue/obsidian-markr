@@ -484,7 +484,30 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 	}
 }
 
+/* ── Row containers ──────────────────────────────────────────────────────── */
+/* On desktop the rows are transparent — children participate in controlEl's
+   flex layout directly. Order values set the correct visual sequence. */
+
+.mr-settings-row1,
+.mr-settings-row2 {
+	display: contents;
+}
+
+.mr-settings-row1 > .mr-settings-inputs      { order: 2; }
+.mr-settings-row2 > .mr-badge--settings      { order: 1; }
+.mr-settings-row2 > .mr-settings-icon-btn    { order: 3; }
+.mr-settings-row2 > .mr-settings-color-wrap  { order: 4; }
+.mr-settings-row1 > .mr-settings-lock-icon,
+.mr-settings-row1 > .extra-setting-button    { order: 5; }
+
 /* ── Editor inputs ───────────────────────────────────────────────────────── */
+
+.mr-settings-inputs {
+	display: flex;
+	gap: 0.5rem;
+	flex: 1 1 0;
+	min-width: 0;
+}
 
 .mr-settings-input {
 	min-width: 0;
@@ -701,21 +724,71 @@ input.mr-settings-input--color::-moz-color-swatch {
 	}
 }
 
-/* ── Responsive ──────────────────────────────────────────────────────────── */
+/* ── Phone layout ────────────────────────────────────────────────────────── */
+/* .is-phone is set by Obsidian on real devices and dev:mobile emulation.    */
 
-@media (max-width: 720px) {
-	.setting-item.mr-settings-marker-row {
-		flex-wrap: wrap;
-		align-items: flex-start;
-	}
+/* Hide empty info element (badge moved into control rows) */
+body.is-phone[data-markr] .setting-item.mr-settings-marker-row .setting-item-info {
+	display: none;
+}
 
-	.setting-item.mr-settings-marker-row .setting-item-control {
-		width: 100%;
-		justify-content: flex-end;
-	}
+/* Obsidian phone CSS sets gap:var(--size-4-4) on all .setting-item — zero it for our rows */
+body.is-phone[data-markr] .setting-item.mr-settings-marker-row {
+	gap: 0;
+}
 
-	.mr-settings-input--trigger,
-	.mr-settings-input--label {
-		flex-basis: auto;
-	}
+
+/* Row containers become real flex rows (override display:contents) */
+.is-phone .mr-settings-row1,
+.is-phone .mr-settings-row2 {
+	display: flex;
+	align-items: center;
+	gap: 0.5rem;
+}
+
+/* Row 1: inputs fill, action button at far right */
+.is-phone .mr-settings-row1 .mr-settings-inputs {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
+/* Row 2: icon picker moves to end; space before colors aligns them under label */
+.is-phone .mr-settings-row2 .mr-settings-icon-btn {
+	order: 10;
+	width: 26px !important;
+	flex: 0 0 26px;
+	margin-left: 0.5rem;
+}
+
+/* Reset desktop adjacent-sibling margin (icon btn no longer visually first) */
+.is-phone .mr-settings-icon-btn + .mr-settings-color-wrap {
+	margin-left: 0;
+}
+
+/* Indent badge from row left edge */
+.is-phone .mr-settings-row2 > .mr-badge--settings {
+	margin-left: 8px;
+}
+
+/* Space between badge and first color circle */
+.is-phone .mr-settings-row2 > .mr-settings-color-wrap:first-of-type {
+	margin-left: calc(4.25rem - var(--mr-settings-preview-size));
+}
+
+/* Obsidian phone CSS forces width:100% on text inputs — clamp ours */
+.is-phone .mr-settings-input--trigger {
+	width: 4.25rem !important;
+	flex: 0 0 4.25rem;
+}
+
+.is-phone .mr-settings-input--label {
+	flex: 1 1 0;
+	min-width: 0;
+	width: auto !important;
+}
+
+/* Obsidian sets --input-height:44px + 16px side padding on mobile — reduce for compact rows */
+.is-phone .mr-settings-input {
+	height: 32px;
+	padding-inline: 0.5rem;
 }

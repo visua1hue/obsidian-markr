@@ -1,6 +1,5 @@
 import {
 	App,
-	ExtraButtonComponent,
 	FuzzyMatch,
 	FuzzySuggestModal,
 	Notice,
@@ -187,18 +186,20 @@ export class MarkerEditor {
 
 		setting.nameEl.empty();
 		setting.descEl.empty();
-		setting.nameEl.appendChild(this.buildMarkerBadge(marker));
 		setting.settingEl.setCssProps(markerCssVars(marker.color));
 		setting.settingEl.addClass("mr-colorized");
 
 		const draft = this.draftFromPriority(marker);
-		this.buildRowInputs(setting.controlEl, draft, {
+		const { row1, row2 } = this.buildRowInputs(setting.controlEl, draft, {
 			disabled: true,
 			badgeEl: null,
 			onBlur: () => {},
 		});
 
-		const lockEl = setting.controlEl.createEl("span", {
+		// Badge goes to row2 directly (skip updatePreview to preserve split-color dark mode)
+		row2.prepend(this.buildMarkerBadge(marker));
+
+		const lockEl = row1.createEl("span", {
 			cls: "mr-settings-lock-icon",
 			attr: { "aria-label": "Built-in marker", "data-tooltip-position": "top" },
 		});
@@ -218,37 +219,36 @@ export class MarkerEditor {
 
 		setting.nameEl.empty();
 		setting.descEl.empty();
-		const badgeEl = this.buildMarkerBadge(marker);
-		setting.nameEl.appendChild(badgeEl);
 
+		const badgeEl = this.buildMarkerBadge(marker);
 		const draft = this.draftFromMarker(marker);
 
-		this.buildRowInputs(setting.controlEl, draft, {
+		const { row1 } = this.buildRowInputs(setting.controlEl, draft, {
 			disabled: false,
 			badgeEl,
 			rowEl: setting.settingEl,
 			onBlur: () => { void this.saveOnBlur(marker.id, draft); },
 		});
 
-		setting.addExtraButton((button: ExtraButtonComponent) =>
-			button
-				.setIcon("x")
-				.setTooltip("Remove custom marker")
-				.onClick(async () => {
-					animateOut(
-						setting.settingEl,
-						"mr-settings-marker-row--removing",
-						() => setting.settingEl.remove(),
-						this.plugin,
-					);
-					await this.plugin.updateSettings(
-						(settings: PluginSettings) => ({
-							...settings,
-							markers: settings.markers.filter((e) => e.id !== marker.id),
-						}),
-					);
+		const deleteBtn = row1.createEl("button", {
+			cls: "clickable-icon extra-setting-button",
+			attr: { type: "button", "aria-label": "Remove custom marker", "data-tooltip-position": "top" },
+		});
+		setIcon(deleteBtn, "x");
+		this.plugin.registerDomEvent(deleteBtn, "click", async () => {
+			animateOut(
+				setting.settingEl,
+				"mr-settings-marker-row--removing",
+				() => setting.settingEl.remove(),
+				this.plugin,
+			);
+			await this.plugin.updateSettings(
+				(settings: PluginSettings) => ({
+					...settings,
+					markers: settings.markers.filter((e) => e.id !== marker.id),
 				}),
-		);
+			);
+		});
 
 		return setting;
 	}
@@ -266,9 +266,8 @@ export class MarkerEditor {
 		const badgeEl = document.createElement("span");
 		badgeEl.className = "mr-badge mr-badge--settings mr-settings-creator-badge";
 		badgeEl.setAttribute("aria-hidden", "true");
-		setting.nameEl.appendChild(badgeEl);
 
-		this.buildRowInputs(setting.controlEl, this.creatorDraft, {
+		const { row1 } = this.buildRowInputs(setting.controlEl, this.creatorDraft, {
 			disabled: false,
 			badgeEl,
 			rowEl: setting.settingEl,
@@ -276,12 +275,14 @@ export class MarkerEditor {
 			autofocus: true,
 		});
 
-		setting.addExtraButton((button: ExtraButtonComponent) =>
-			button
-				.setIcon("x")
-				.setTooltip("Cancel new marker")
-				.onClick(() => this.cancelCreatorInPlace(setting.settingEl)),
-		);
+		const cancelBtn = row1.createEl("button", {
+			cls: "clickable-icon extra-setting-button",
+			attr: { type: "button", "aria-label": "Cancel new marker", "data-tooltip-position": "top" },
+		});
+		setIcon(cancelBtn, "x");
+		this.plugin.registerDomEvent(cancelBtn, "click", () => {
+			this.cancelCreatorInPlace(setting.settingEl);
+		});
 
 		this.creatorRefs = { rowEl: setting.settingEl, previewEl: badgeEl };
 
@@ -300,7 +301,10 @@ export class MarkerEditor {
 			onBlur: () => void;
 			autofocus?: boolean;
 		},
-	): void {
+	): { row1: HTMLElement; row2: HTMLElement } {
+		const row1 = container.createDiv({ cls: "mr-settings-row1" });
+		const row2 = container.createDiv({ cls: "mr-settings-row2" });
+
 		// Forward-declared so updatePreview closure can reference it.
 		let iconBtn!: HTMLButtonElement;
 
@@ -351,7 +355,11 @@ export class MarkerEditor {
 			}
 		};
 
-		const triggerInput = container.createEl("input", {
+		// ── Row 1: trigger + label inputs ────────────────────────────────────
+
+		const inputsWrap = row1.createDiv({ cls: "mr-settings-inputs" });
+
+		const triggerInput = inputsWrap.createEl("input", {
 			cls: "mr-settings-input mr-settings-input--trigger",
 			attr: { type: "text", placeholder: "!", "aria-label": "Trigger" },
 		});
@@ -366,7 +374,7 @@ export class MarkerEditor {
 			this.plugin.registerDomEvent(triggerInput, "blur", opts.onBlur);
 		}
 
-		const labelInput = container.createEl("input", {
+		const labelInput = inputsWrap.createEl("input", {
 			cls: "mr-settings-input mr-settings-input--label",
 			attr: { type: "text", placeholder: "Label", "aria-label": "Label" },
 		});
@@ -384,7 +392,11 @@ export class MarkerEditor {
 			requestAnimationFrame(() => triggerInput.focus());
 		}
 
-		iconBtn = container.createEl("button", {
+		// ── Row 2: badge (if provided) + icon picker + color swatches ────────
+
+		if (opts.badgeEl) row2.appendChild(opts.badgeEl);
+
+		iconBtn = row2.createEl("button", {
 			cls: "mr-settings-icon-btn",
 			attr: { type: "button", "aria-label": "Select icon" },
 		});
@@ -408,7 +420,7 @@ export class MarkerEditor {
 			{ key: "bg" as const, tooltip: "Background color" },
 			{ key: "fg" as const, tooltip: "Marker color" },
 		]) {
-			const wrap = container.createDiv({
+			const wrap = row2.createDiv({
 				cls: "mr-settings-color-wrap",
 				attr: { "aria-label": tooltip, "data-tooltip-position": "top" },
 			});
@@ -429,7 +441,7 @@ export class MarkerEditor {
 			}
 		}
 
-		const badgeBgWrap = container.createDiv({
+		const badgeBgWrap = row2.createDiv({
 			cls: "mr-settings-color-wrap",
 			attr: { "aria-label": "Badge color", "data-tooltip-position": "top" },
 		});
@@ -457,6 +469,8 @@ export class MarkerEditor {
 
 		// Initialise preview state on first render
 		updatePreview();
+
+		return { row1, row2 };
 	}
 
 	private updateIconButton(btn: HTMLElement, iconId: string): void {
