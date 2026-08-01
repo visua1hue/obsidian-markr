@@ -351,7 +351,9 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 	justify-content: flex-start;
 	gap: 0.9rem;
 	margin: 0.6rem 0.5rem !important;
-	padding: 0.55rem 0.9rem !important;
+	padding-block: 0.55rem !important;
+	padding-inline-start: 0.9rem !important;
+	padding-inline-end: 0.6rem !important;
 	border: 1px solid var(--background-modifier-border) !important;
 	border-radius: var(--input-radius) !important;
 	background: var(--background-secondary) !important;
@@ -379,17 +381,12 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 
 
 body[data-markr] .setting-item.mr-settings-marker-row .setting-item-info {
-	display: flex;
-	align-items: center;
-	flex: 0 0 auto;
-	min-width: 0;
-	/* The settings framework's own injected CSS sets margin-inline-start/end:
-	   var(--size-4-4) on .setting-item > :first-child — both sides need
-	   resetting or this (empty) box keeps reserving 16px + the row's own
-	   gap before the actual content. */
-	margin: 0;
-	padding: 0;
-	overflow: visible;
+	/* nameEl/descEl are always emptied for these rows, so this box is
+	   permanently empty — display: none removes it from the row's flex
+	   layout entirely. Zero size alone wasn't enough: the row's own `gap`
+	   still reserves a full unit before the next flex child regardless of
+	   this element's size, wasting that space before .setting-item-control. */
+	display: none;
 }
 
 body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control {
@@ -403,8 +400,18 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control {
 
 body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .extra-setting-button {
 	margin-left: auto;
-	width: 28px;
+	width: 26px;
 	padding-inline: 0;
+	color: var(--text-faint);
+	transition: color 120ms ease;
+}
+
+/* Neither this nor the header's "+" button has a background-color hover
+   rule (checked — no match in app.css or here). The warning orange against
+   the row's own tinted background just reads as more visually prominent
+   than the "+" button's untinted hover, not an actual size difference. */
+body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .extra-setting-button:hover {
+	color: var(--text-warning);
 }
 
 .setting-item.mr-settings-marker-row .setting-item-name {
@@ -430,6 +437,7 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 	max-width: var(--mr-settings-preview-size);
 	height: var(--mr-settings-preview-size);
 	padding: 0;
+	margin-left: 4px;
 	border-radius: var(--mr-badge-radius);
 	/* use fixed font-size so em-based icon sizes don't compound */
 	font-size: 0.78rem;
