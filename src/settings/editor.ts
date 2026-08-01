@@ -197,14 +197,14 @@ export class MarkerEditor {
 		setting.settingEl.addClass("mr-colorized");
 
 		const draft = this.draftFromPriority(marker);
-		const { row1, row2 } = this.buildRowInputs(setting.controlEl, draft, {
+		const { row1 } = this.buildRowInputs(setting.controlEl, draft, {
 			disabled: true,
 			badgeEl: null,
 			onBlur: () => {},
 		});
 
-		// Badge goes to row2 directly (skip updatePreview to preserve split-color dark mode)
-		row2.prepend(this.buildMarkerBadge(marker));
+		// Badge goes to row1 directly (skip updatePreview to preserve split-color dark mode)
+		row1.prepend(this.buildMarkerBadge(marker));
 
 		const lockEl = row1.createEl("span", {
 			cls: "mr-settings-lock-icon",
@@ -360,11 +360,11 @@ export class MarkerEditor {
 			}
 		};
 
-		// ── Row 1: trigger + label inputs ────────────────────────────────────
+		// ── Row 1: badge (if provided) + trigger + label ──────────────────────
 
-		const inputsWrap = row1.createDiv({ cls: "mr-settings-inputs" });
+		if (opts.badgeEl) row1.appendChild(opts.badgeEl);
 
-		const triggerInput = inputsWrap.createEl("input", {
+		const triggerInput = row1.createEl("input", {
 			cls: "mr-settings-input mr-settings-input--trigger",
 			attr: {
 				type: "text",
@@ -384,7 +384,7 @@ export class MarkerEditor {
 			this.plugin.registerDomEvent(triggerInput, "blur", opts.onBlur);
 		}
 
-		const labelInput = inputsWrap.createEl("input", {
+		const labelInput = row1.createEl("input", {
 			cls: "mr-settings-input mr-settings-input--label",
 			attr: { type: "text", placeholder: "Label", "aria-label": "Label" },
 		});
@@ -402,9 +402,7 @@ export class MarkerEditor {
 			requestAnimationFrame(() => triggerInput.focus());
 		}
 
-		// ── Row 2: badge (if provided) + icon picker + color swatches ────────
-
-		if (opts.badgeEl) row2.appendChild(opts.badgeEl);
+		// ── Row 2: icon picker + color swatches ────────────────────────────────
 
 		iconBtn = row2.createEl("button", {
 			cls: "mr-settings-icon-btn",

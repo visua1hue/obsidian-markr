@@ -351,7 +351,7 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 	padding-inline-start: 0.9rem !important;
 	padding-inline-end: 0.6rem !important;
 	border: none !important;
-	border-radius: var(--input-radius) !important;
+	border-radius: calc(var(--input-radius) * 2) !important;
 	background: var(--background-secondary) !important;
 	box-shadow: 0 1px 0
 		color-mix(in srgb, var(--background-primary) 65%, transparent);
@@ -505,21 +505,15 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 	display: contents;
 }
 
-.mr-settings-row1 > .mr-settings-inputs      { order: 2; }
-.mr-settings-row2 > .mr-badge--settings      { order: 1; }
-.mr-settings-row2 > .mr-settings-icon-btn    { order: 3; }
-.mr-settings-row2 > .mr-settings-color-wrap  { order: 4; }
+.mr-settings-row1 > .mr-badge--settings        { order: 1; }
+.mr-settings-row1 > .mr-settings-input--trigger { order: 2; }
+.mr-settings-row1 > .mr-settings-input--label   { order: 3; }
+.mr-settings-row2 > .mr-settings-icon-btn       { order: 4; }
+.mr-settings-row2 > .mr-settings-color-wrap     { order: 5; }
 .mr-settings-row1 > .mr-settings-lock-icon,
-.mr-settings-row1 > .extra-setting-button    { order: 5; }
+.mr-settings-row1 > .extra-setting-button       { order: 6; }
 
 /* ── Editor inputs ───────────────────────────────────────────────────────── */
-
-.mr-settings-inputs {
-	display: flex;
-	gap: var(--mr-settings-base-gap);
-	flex: 1 1 0;
-	min-width: 0;
-}
 
 .mr-settings-input {
 	min-width: 0;
@@ -765,10 +759,16 @@ body.is-phone[data-markr] .setting-item.mr-settings-marker-row .setting-item-inf
 /* Obsidian phone CSS sets gap:var(--size-4-4) on all .setting-item — zero it for our rows */
 body.is-phone[data-markr] .setting-item.mr-settings-marker-row {
 	gap: 0;
+	/* Match the Defaults group card's edge inset instead of desktop's own margin. */
+	margin-inline: 0 !important;
+	/* var(--input-radius) (44px) reads oversized on a ~90px-tall row — match the
+	   Defaults card's own radius instead. */
+	border-radius: 30px !important;
 }
 
-
-/* Row containers become real flex rows (override display:contents) */
+/* Row containers become real flex rows (override display:contents).
+   Row 1 = badge + trigger + label, action button pushed to the far right.
+   Row 2 = icon picker + swatches, indented to align under row 1's trigger. */
 .is-phone .mr-settings-row1,
 .is-phone .mr-settings-row2 {
 	display: flex;
@@ -776,45 +776,48 @@ body.is-phone[data-markr] .setting-item.mr-settings-marker-row {
 	gap: var(--mr-settings-base-gap);
 }
 
-/* Row 1: inputs fill, action button at far right */
-.is-phone .mr-settings-row1 .mr-settings-inputs {
+/* row1 is otherwise shrink-to-fit, leaving no room for margin-left: auto
+   to push the button into — force it full-width. */
+.is-phone .mr-settings-row1 {
+	flex: 1 1 100%;
+}
+
+/* Matches the row's right inset (lock/delete button) so the badge and the
+   action button read as symmetric side padding. Overrides the base 4px
+   margin-left (not additive with it). */
+.is-phone .mr-settings-row1 > .mr-badge--settings {
+	margin-left: 5.4px;
+}
+
+.is-phone .mr-settings-row1 .mr-settings-lock-icon,
+.is-phone .mr-settings-row1 .extra-setting-button {
+	margin-left: auto;
+	/* Aligns the button's right edge with the heading's "+" button — our own
+	   padding-inline-end alone only gets it to ~8px. */
+	margin-right: 9.6px;
+}
+
+.is-phone .mr-settings-row2 {
+	/* Measured to match row 1's badge width + gap so row 2 lines up under the
+	   trigger — the badge's rendered width doesn't map cleanly to a variable. */
+	padding-left: 27.8px;
+}
+
+.is-phone .mr-settings-input--label {
 	flex: 1 1 auto;
 	min-width: 0;
+	width: auto !important;
 }
 
-/* Row 2: icon picker moves to end; space before colors aligns them under label */
-.is-phone .mr-settings-row2 .mr-settings-icon-btn {
-	order: 10;
+.is-phone .mr-settings-icon-btn {
 	width: 26px !important;
 	flex: 0 0 26px;
-	margin-left: 0.5rem;
-}
-
-/* Reset desktop adjacent-sibling margin (icon btn no longer visually first) */
-.is-phone .mr-settings-icon-btn + .mr-settings-color-wrap {
-	margin-left: 0;
-}
-
-/* Indent badge from row left edge */
-.is-phone .mr-settings-row2 > .mr-badge--settings {
-	margin-left: 8px;
-}
-
-/* Space between badge and first color circle */
-.is-phone .mr-settings-row2 > .mr-settings-color-wrap:first-of-type {
-	margin-left: calc(4.25rem - var(--mr-settings-preview-size));
 }
 
 /* Obsidian phone CSS forces width:100% on text inputs — clamp ours */
 .is-phone .mr-settings-input--trigger {
 	width: 4.25rem !important;
 	flex: 0 0 4.25rem;
-}
-
-.is-phone .mr-settings-input--label {
-	flex: 1 1 0;
-	min-width: 0;
-	width: auto !important;
 }
 
 /* Obsidian sets --input-height:44px + 16px side padding on mobile — reduce for compact rows */
