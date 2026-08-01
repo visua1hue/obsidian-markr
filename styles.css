@@ -443,8 +443,6 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 	font-size: 0.78rem;
 	line-height: 1;
 	vertical-align: middle;
-	box-shadow: inset 0 0 0 1px
-		color-mix(in srgb, var(--mr-marker-fg, currentColor) 14%, transparent);
 }
 
 /* Icon sized relative to the badge dimension, not to the compounded em */
