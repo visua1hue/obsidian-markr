@@ -323,6 +323,14 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 	margin-top: 0.5rem;
 }
 
+/*
+ * Obsidian 1.13's .setting-group styling treats items as one connected card
+ * (border-radius: 0 between rows, radius only at the group's outer corners,
+ * divider lines via ::before, host-controlled padding — all at higher
+ * specificity than a plain two-class selector). Marker rows are meant to be
+ * independent boxes with their own border/radius/gap, so every property that
+ * design contests needs !important to actually win.
+ */
 .setting-item.mr-settings-marker-row {
 	overflow: visible;
 	box-sizing: border-box;
@@ -330,11 +338,11 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 	align-items: center;
 	justify-content: flex-start;
 	gap: 0.9rem;
-	margin: 0.6rem 0;
-	padding: 0.55rem 0.9rem;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--mr-settings-row-radius);
-	background: var(--background-secondary);
+	margin: 0.6rem 0 !important;
+	padding: 0.55rem 0.9rem !important;
+	border: 1px solid var(--background-modifier-border) !important;
+	border-radius: var(--mr-settings-row-radius) !important;
+	background: var(--background-secondary) !important;
 	box-shadow: 0 1px 0
 		color-mix(in srgb, var(--background-primary) 65%, transparent);
 	transition:
@@ -349,12 +357,12 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 		in oklch,
 		var(--mr-marker-bg, transparent) 28%,
 		transparent
-	);
+	) !important;
 	border-color: color-mix(
 		in srgb,
 		var(--mr-marker-bg) 22%,
 		var(--background-modifier-border)
-	);
+	) !important;
 }
 
 
@@ -396,14 +404,6 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 	display: none;
 }
 
-.setting-group .setting-item.mr-settings-marker-row:first-child {
-	padding-top: 0.55rem;
-	border-top: 1px solid var(--background-modifier-border);
-}
-
-.setting-group .setting-item.mr-settings-marker-row:last-child {
-	padding-bottom: 0.55rem;
-}
 
 /* ── Marker badge in settings ────────────────────────────────────────────── */
 
