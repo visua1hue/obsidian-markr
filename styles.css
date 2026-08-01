@@ -646,12 +646,17 @@ input.mr-settings-input--color::-moz-color-swatch {
 	stroke-width: var(--icon-s-stroke-width);
 }
 
+.mr-settings-icon-btn--placeholder svg,
+.mr-settings-icon-btn--placeholder .svg-icon {
+	width: 1.15rem;
+	height: 1.15rem;
+}
+
 .mr-settings-icon-btn.mr-colorized {
 	color: var(--mr-marker-fg);
 }
 
 .mr-settings-icon-btn:disabled {
-	background: color-mix(in srgb, var(--background-modifier-border) 25%, transparent);
 	cursor: not-allowed;
 	pointer-events: none;
 }
