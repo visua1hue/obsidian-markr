@@ -411,7 +411,7 @@ export class MarkerEditor {
 
 		iconBtn = row2.createEl("button", {
 			cls: "mr-settings-icon-btn",
-			attr: { type: "button", "aria-label": "Select icon" },
+			attr: { type: "button", "aria-label": "Custom icon", "data-tooltip-position": "top" },
 		});
 		if (opts.disabled) {
 			iconBtn.disabled = true;
