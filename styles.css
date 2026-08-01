@@ -347,7 +347,7 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 	align-items: center;
 	justify-content: flex-start;
 	gap: 0.9rem;
-	margin: 0.6rem 0 !important;
+	margin: 0.6rem 0.5rem !important;
 	padding: 0.55rem 0.9rem !important;
 	border: 1px solid var(--background-modifier-border) !important;
 	border-radius: var(--input-radius) !important;
@@ -380,7 +380,11 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-info {
 	align-items: center;
 	flex: 0 0 auto;
 	min-width: 0;
-	margin-right: 0;
+	/* The settings framework's own injected CSS sets margin-inline-start/end:
+	   var(--size-4-4) on .setting-item > :first-child — both sides need
+	   resetting or this (empty) box keeps reserving 16px + the row's own
+	   gap before the actual content. */
+	margin: 0;
 	padding: 0;
 	overflow: visible;
 }
