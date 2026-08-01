@@ -5,6 +5,8 @@ import {
 	Setting,
 	SettingGroup,
 	ToggleComponent,
+	type SettingDefinitionItem,
+	type SettingGroupItem,
 } from "obsidian";
 import type MarkrPlugin from "../main";
 import {
@@ -82,6 +84,92 @@ export class MarkrSettingTab extends PluginSettingTab {
 				}));
 				return;
 		}
+	}
+
+	override getSettingDefinitions(): SettingDefinitionItem[] {
+		this.editor.reset();
+		return [
+			{
+				type: "group",
+				heading: "Defaults",
+				items: [
+					{
+						name: "Enable priority markers",
+						desc: "Enables the built-in priority triggers: !, !!, !!!",
+						control: { type: "toggle", key: "priority.enabled" },
+					},
+					{
+						name: "Reveal trigger on active line",
+						desc: "Show raw trigger instead of icon on the active line.",
+						control: {
+							type: "toggle",
+							key: "behavior.hideMarkerWhenCursorAway",
+						},
+					},
+					{
+						name: "Show tooltips on markers",
+						desc: "Show the marker label when hovering a rendered marker badge.",
+						control: { type: "toggle", key: "behavior.showTooltips" },
+					},
+					{
+						name: "Apply in reading view",
+						desc: "May impact performance. Switch views to apply.",
+						control: {
+							type: "toggle",
+							key: "performance.applyInReadingView",
+						},
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: "Personalize Markers",
+				extraButtons: [
+					(button: ExtraButtonComponent) => {
+						button.setIcon("plus").setTooltip("Add custom marker");
+						button.onClick(() => this.editor.openCreator());
+					},
+				],
+				items: this.markerItems(),
+			},
+		];
+	}
+
+	private markerItems(): SettingGroupItem[] {
+		const items: SettingGroupItem[] = [];
+
+		for (const marker of priorityMarkers(this.plugin.settings.markers)) {
+			items.push({
+				name: marker.label,
+				searchable: false,
+				visible: () => this.plugin.settings.priority.enabled,
+				render: (setting: Setting) => {
+					this.editor.configurePrioritySetting(setting, marker);
+				},
+			});
+		}
+
+		for (const marker of customMarkers(this.plugin.settings.markers)) {
+			items.push({
+				name: marker.label,
+				searchable: false,
+				render: (setting: Setting) => {
+					this.editor.configureCustomSetting(setting, marker);
+				},
+			});
+		}
+
+		if (this.editor.isCreatorOpen) {
+			items.push({
+				name: "New marker",
+				searchable: false,
+				render: (setting: Setting) => {
+					this.editor.configureCreatorSetting(setting);
+				},
+			});
+		}
+
+		return items;
 	}
 
 	display(): void {
@@ -232,8 +320,13 @@ export class MarkrSettingTab extends PluginSettingTab {
 	}
 
 	private redisplayPreservingScroll(): void {
-		this.pendingScrollTop = this.getScrollContainer()?.scrollTop ?? null;
-		// eslint-disable-next-line @typescript-eslint/no-deprecated -- call site removed once redisplay goes through this.update(), see refactor.md
-		this.display();
+		const restoreScrollTop = this.getScrollContainer()?.scrollTop ?? null;
+		this.update();
+		if (restoreScrollTop !== null) {
+			requestAnimationFrame(() => {
+				const scroller = this.getScrollContainer();
+				if (scroller) scroller.scrollTop = restoreScrollTop;
+			});
+		}
 	}
 }
