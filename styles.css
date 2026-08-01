@@ -22,12 +22,8 @@
 	--mr-badge-radius: 4px;
 	--mr-settings-preview-size: 1.2rem;
 	--mr-settings-icon-size: 24px;
-	/* Extra gap separating the icon-picker from the color-swatch group,
-	   on top of the row's own base gap between every other pair. */
-	--mr-settings-group-gap: 0.4rem;
-	/* Base gap between adjacent elements within a row (trigger↔label,
-	   color swatch↔color swatch). */
-	--mr-settings-base-gap: 0.5rem;
+	--mr-settings-group-gap: 0.4rem; /* icon-picker → color-swatch group */
+	--mr-settings-base-gap: 0.5rem; /* trigger↔label, swatch↔swatch */
 }
 
 body.theme-light[data-markr] .mr-colorized {
@@ -258,8 +254,7 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 	.mr-badge--settings,
 	.mr-settings-icon-btn,
 	.setting-item.mr-settings-marker-row {
-		/* The bare `squircle` keyword doesn't match Obsidian's own input
-		   curvature — use the same explicit exponent so radii actually align. */
+		/* bare `squircle` keyword doesn't match Obsidian's own input curvature */
 		corner-shape: superellipse(1.33);
 	}
 }
@@ -327,12 +322,8 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 
 /* ── Settings UI ─────────────────────────────────────────────────────────── */
 
-/* Obsidian 1.13 gives every .setting-group a card background behind its
-   .setting-items — scoped to Markr's own tab via containerEl's mr-settings-tab
-   class so other plugins'/core's settings groups keep the host's default.
-   Only the marker group needs this removed (rows already carry their own
-   background/border); Defaults has plain toggle rows and still needs the
-   host's card to visually group them. */
+/* Obsidian's card bg is redundant once rows carry their own background —
+   scoped to markr's tab and just the marker group; Defaults keeps it. */
 .mr-settings-tab .setting-group .setting-items:has(.mr-settings-marker-row) {
 	background: none;
 }
@@ -341,14 +332,8 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 	margin-top: 0.5rem;
 }
 
-/*
- * Obsidian 1.13's .setting-group styling treats items as one connected card
- * (border-radius: 0 between rows, radius only at the group's outer corners,
- * divider lines via ::before, host-controlled padding — all at higher
- * specificity than a plain two-class selector). Marker rows are meant to be
- * independent boxes with their own border/radius/gap, so every property that
- * design contests needs !important to actually win.
- */
+/* Obsidian's .setting-group styles rows as one connected card at higher
+   specificity than a plain two-class selector — !important wins the fight. */
 .setting-item.mr-settings-marker-row {
 	overflow: visible;
 	box-sizing: border-box;
@@ -387,11 +372,7 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 
 
 body[data-markr] .setting-item.mr-settings-marker-row .setting-item-info {
-	/* nameEl/descEl are always emptied for these rows, so this box is
-	   permanently empty — display: none removes it from the row's flex
-	   layout entirely. Zero size alone wasn't enough: the row's own `gap`
-	   still reserves a full unit before the next flex child regardless of
-	   this element's size, wasting that space before .setting-item-control. */
+	/* always empty (nameEl/descEl cleared); zero size alone still ate a `gap` unit */
 	display: none;
 }
 
@@ -412,10 +393,8 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 	transition: color 120ms ease;
 }
 
-/* Neither this nor the header's "+" button has a background-color hover
-   rule (checked — no match in app.css or here). The warning orange against
-   the row's own tinted background just reads as more visually prominent
-   than the "+" button's untinted hover, not an actual size difference. */
+/* No background-color hover rule exists here or on the "+" button (checked) —
+   the warning orange just reads bigger against the row's tint, not a size bug. */
 body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .extra-setting-button:hover {
 	color: var(--text-warning);
 }
@@ -647,15 +626,12 @@ input.mr-settings-input--color::-moz-color-swatch {
 	transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
 }
 
-/* Specificity note: Obsidian's `button:not(.clickable-icon)` sets
-   background-color at (0,1,1) — a bare class loses, qualify with the
-   element type to tie (source order then wins ours). */
+/* `button:not(.clickable-icon)` in app.css beats a bare class on specificity;
+   qualifying with the element type / doubling the class wins both below. */
 button.mr-settings-icon-btn {
 	background: transparent;
 }
 
-/* Specificity note: Obsidian's `button:not(.clickable-icon)` sets color at
-   (0,1,1), edging out a plain single class — double up to win. */
 .mr-settings-icon-btn.mr-settings-icon-btn--placeholder {
 	color: var(--text-faint);
 }
