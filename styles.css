@@ -620,11 +620,17 @@ input.mr-settings-input--color::-moz-color-swatch {
 	height: 26px;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 10px;
-	background: transparent;
 	cursor: pointer;
 	box-sizing: border-box;
 	margin-left: 0.4rem;
 	transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+/* Specificity note: Obsidian's `button:not(.clickable-icon)` sets
+   background-color at (0,1,1) — a bare class loses, qualify with the
+   element type to tie (source order then wins ours). */
+button.mr-settings-icon-btn {
+	background: transparent;
 }
 
 /* Specificity note: Obsidian's `button:not(.clickable-icon)` sets color at
