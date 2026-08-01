@@ -22,6 +22,12 @@
 	--mr-badge-radius: 4px;
 	--mr-settings-preview-size: 1.2rem;
 	--mr-settings-icon-size: 24px;
+	/* Extra gap separating the icon-picker from the color-swatch group,
+	   on top of the row's own base gap between every other pair. */
+	--mr-settings-group-gap: 0.4rem;
+	/* Base gap between adjacent elements within a row (trigger↔label,
+	   color swatch↔color swatch). */
+	--mr-settings-base-gap: 0.5rem;
 }
 
 body.theme-light[data-markr] .mr-colorized {
@@ -392,7 +398,7 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-info {
 body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control {
 	display: flex;
 	align-items: center;
-	gap: 0.5rem;
+	gap: var(--mr-settings-base-gap);
 	flex: 1 1 auto;
 	flex-wrap: wrap;
 	justify-content: flex-start;
@@ -526,7 +532,7 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 
 .mr-settings-inputs {
 	display: flex;
-	gap: 0.5rem;
+	gap: var(--mr-settings-base-gap);
 	flex: 1 1 0;
 	min-width: 0;
 }
@@ -548,7 +554,7 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 /* ── Color circles ───────────────────────────────────────────────────────── */
 
 .mr-settings-icon-btn + .mr-settings-color-wrap {
-	margin-left: 0.4rem;
+	margin-left: var(--mr-settings-group-gap);
 }
 
 .mr-settings-color-wrap {
@@ -786,7 +792,7 @@ body.is-phone[data-markr] .setting-item.mr-settings-marker-row {
 .is-phone .mr-settings-row2 {
 	display: flex;
 	align-items: center;
-	gap: 0.5rem;
+	gap: var(--mr-settings-base-gap);
 }
 
 /* Row 1: inputs fill, action button at far right */
