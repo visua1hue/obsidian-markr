@@ -313,8 +313,8 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 
 .mr-badge.mr-badge-icon > svg,
 .mr-badge.mr-badge-icon > .svg-icon {
-	width: 1em;
-	height: 1em;
+	width: 1.1em;
+	height: 1.1em;
 	stroke-width: 2.25;
 	flex-shrink: 0;
 	display: block;
