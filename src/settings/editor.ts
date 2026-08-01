@@ -353,18 +353,10 @@ export class MarkerEditor {
 				}
 			}
 
-			// Row background tint
+			// Row background tint — draft.bg/fg are never empty, so always colorized.
 			if (opts.rowEl) {
-				const hasDraft = opts.badgeEl
-					? draft.trigger.trim().length > 0 || draft.icon.length > 0
-					: true;
-				if (hasDraft) {
-					opts.rowEl.setCssProps(colorVars());
-					opts.rowEl.addClass("mr-colorized");
-				} else {
-					opts.rowEl.removeClass("mr-colorized");
-					opts.rowEl.removeAttribute("style");
-				}
+				opts.rowEl.setCssProps(colorVars());
+				opts.rowEl.addClass("mr-colorized");
 			}
 		};
 
