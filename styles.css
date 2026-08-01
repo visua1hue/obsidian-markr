@@ -640,7 +640,7 @@ button.mr-settings-icon-btn {
 }
 
 .mr-settings-icon-btn--placeholder:hover {
-	color: var(--text-normal);
+	color: var(--text-muted);
 }
 
 .mr-settings-icon-btn svg,
