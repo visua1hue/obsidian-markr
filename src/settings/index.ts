@@ -3,8 +3,8 @@ import {
 	ExtraButtonComponent,
 	PluginSettingTab,
 	Setting,
-	SettingGroup,
-	ToggleComponent,
+	type SettingDefinitionItem,
+	type SettingGroupItem,
 } from "obsidian";
 import type MarkrPlugin from "../main";
 import {
@@ -17,7 +17,6 @@ import type { PluginSettings } from "./types";
 export class MarkrSettingTab extends PluginSettingTab {
 	plugin: MarkrPlugin;
 	private readonly editor: MarkerEditor;
-	private pendingScrollTop: number | null = null;
 
 	constructor(app: App, plugin: MarkrPlugin) {
 		super(app, plugin);
@@ -25,153 +24,152 @@ export class MarkrSettingTab extends PluginSettingTab {
 		this.editor = new MarkerEditor(app, plugin, () =>
 			this.redisplayPreservingScroll(),
 		);
+		// Scoping hook for styles.css — containerEl is generic
+		// (.vertical-tab-content) with nothing tab-specific to key off.
+		this.containerEl.addClass("mr-settings-tab");
 	}
 
 	override hide(): void {
 		this.editor.closeCreator();
 	}
 
-	display(): void {
-		const { containerEl } = this;
-		const restoreScrollTop = this.pendingScrollTop;
-		this.pendingScrollTop = null;
-		this.editor.reset();
-
-		containerEl.empty();
-
-		this.renderDefaultSettings(containerEl);
-		this.renderMarkerConfiguration(containerEl);
-
-		if (restoreScrollTop !== null) {
-			requestAnimationFrame(() => {
-				const scroller = this.getScrollContainer();
-				if (scroller) scroller.scrollTop = restoreScrollTop;
-			});
+	// Bridge for declarative `control` definitions: PluginSettings is nested +
+	// readonly, so the framework's default `plugin.settings[key]` binding can't
+	// read/write it directly. Dot-path keys route through updateSettings instead.
+	override getControlValue(key: string): unknown {
+		switch (key) {
+			case "priority.enabled":
+				return this.plugin.settings.priority.enabled;
+			case "behavior.hideMarkerWhenCursorAway":
+				return this.plugin.settings.behavior.hideMarkerWhenCursorAway;
+			case "behavior.showTooltips":
+				return this.plugin.settings.behavior.showTooltips;
+			case "performance.applyInReadingView":
+				return this.plugin.settings.performance.applyInReadingView;
+			default:
+				return undefined;
 		}
 	}
 
-	private renderDefaultSettings(containerEl: HTMLElement): void {
-		const group = new SettingGroup(containerEl);
-		group.setHeading("Defaults");
-
-		group.addSetting((setting: Setting) => {
-			setting
-				.setName("Enable priority markers")
-				.setDesc("Enables the built-in priority triggers: !, !!, !!!")
-				.addToggle((toggle: ToggleComponent) =>
-					toggle
-						.setValue(this.plugin.settings.priority.enabled)
-						.onChange((value: boolean) => {
-							void this.plugin.updateSettings(
-								(settings: PluginSettings) => ({
-									...settings,
-									priority: { enabled: value },
-								}),
-							).then(() => this.redisplayPreservingScroll());
-						}),
-				);
-		});
-
-		group.addSetting((setting: Setting) => {
-			setting
-				.setName("Reveal trigger on active line")
-				.setDesc("Show raw trigger instead of icon on the active line.")
-				.addToggle((toggle: ToggleComponent) =>
-					toggle
-						.setValue(
-							this.plugin.settings.behavior.hideMarkerWhenCursorAway,
-						)
-						.onChange((value: boolean) => {
-							void this.plugin.updateSettings(
-								(settings: PluginSettings) => ({
-									...settings,
-									behavior: {
-										...settings.behavior,
-										hideMarkerWhenCursorAway: value,
-									},
-								}),
-							);
-						}),
-				);
-		});
-
-		group.addSetting((setting: Setting) => {
-			setting
-				.setName("Show tooltips on markers")
-				.setDesc(
-					"Show the marker label when hovering a rendered marker badge.",
-				)
-				.addToggle((toggle: ToggleComponent) =>
-					toggle
-						.setValue(this.plugin.settings.behavior.showTooltips)
-						.onChange((value: boolean) => {
-							void this.plugin.updateSettings(
-								(settings: PluginSettings) => ({
-									...settings,
-									behavior: {
-										...settings.behavior,
-										showTooltips: value,
-									},
-								}),
-							);
-						}),
-				);
-		});
-
-		group.addSetting((setting: Setting) => {
-			setting
-				.setName("Apply in reading view")
-				.setDesc(
-					"May impact performance. Switch views to apply.",
-				)
-				.addToggle((toggle: ToggleComponent) =>
-					toggle
-						.setValue(
-							this.plugin.settings.performance.applyInReadingView,
-						)
-						.onChange((value: boolean) => {
-							void this.plugin.updateSettings(
-								(settings: PluginSettings) => ({
-									...settings,
-									performance: {
-										...settings.performance,
-										applyInReadingView: value,
-									},
-								}),
-							);
-						}),
-				);
-		});
+	override async setControlValue(key: string, value: unknown): Promise<void> {
+		switch (key) {
+			case "priority.enabled":
+				await this.plugin.updateSettings((settings: PluginSettings) => ({
+					...settings,
+					priority: { enabled: value as boolean },
+				}));
+				return;
+			case "behavior.hideMarkerWhenCursorAway":
+				await this.plugin.updateSettings((settings: PluginSettings) => ({
+					...settings,
+					behavior: {
+						...settings.behavior,
+						hideMarkerWhenCursorAway: value as boolean,
+					},
+				}));
+				return;
+			case "behavior.showTooltips":
+				await this.plugin.updateSettings((settings: PluginSettings) => ({
+					...settings,
+					behavior: { ...settings.behavior, showTooltips: value as boolean },
+				}));
+				return;
+			case "performance.applyInReadingView":
+				await this.plugin.updateSettings((settings: PluginSettings) => ({
+					...settings,
+					performance: {
+						...settings.performance,
+						applyInReadingView: value as boolean,
+					},
+				}));
+				return;
+		}
 	}
 
-	private renderMarkerConfiguration(containerEl: HTMLElement): void {
-		const group = new SettingGroup(containerEl);
-		group.setHeading("Personalize Markers");
+	override getSettingDefinitions(): SettingDefinitionItem[] {
+		this.editor.reset();
+		return [
+			{
+				type: "group",
+				heading: "Defaults",
+				items: [
+					{
+						name: "Enable priority markers",
+						desc: "Enables the built-in priority triggers: !, !!, !!!",
+						control: { type: "toggle", key: "priority.enabled" },
+					},
+					{
+						name: "Reveal trigger on active line",
+						desc: "Show raw trigger instead of icon on the active line.",
+						control: {
+							type: "toggle",
+							key: "behavior.hideMarkerWhenCursorAway",
+						},
+					},
+					{
+						name: "Show tooltips on markers",
+						desc: "Show the marker label when hovering a rendered marker badge.",
+						control: { type: "toggle", key: "behavior.showTooltips" },
+					},
+					{
+						name: "Apply in reading view",
+						desc: "May impact performance. Switch views to apply.",
+						control: {
+							type: "toggle",
+							key: "performance.applyInReadingView",
+						},
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: "Personalize Markers",
+				extraButtons: [
+					(button: ExtraButtonComponent) => {
+						button.setIcon("plus").setTooltip("Add custom marker");
+						button.onClick(() => this.editor.openCreator());
+					},
+				],
+				items: this.markerItems(),
+			},
+		];
+	}
 
-		group.addExtraButton((button: ExtraButtonComponent) => {
-			button.setIcon("plus").setTooltip("Add custom marker");
-			button.onClick(() => this.editor.openCreator());
-		});
+	private markerItems(): SettingGroupItem[] {
+		const items: SettingGroupItem[] = [];
 
-		if (this.plugin.settings.priority.enabled) {
-			for (const marker of priorityMarkers(this.plugin.settings.markers)) {
-				group.addSetting((setting: Setting) => {
+		for (const marker of priorityMarkers(this.plugin.settings.markers)) {
+			items.push({
+				name: marker.label,
+				searchable: false,
+				visible: () => this.plugin.settings.priority.enabled,
+				render: (setting: Setting) => {
 					this.editor.configurePrioritySetting(setting, marker);
-				});
-			}
+				},
+			});
 		}
 
 		for (const marker of customMarkers(this.plugin.settings.markers)) {
-			group.addSetting((setting: Setting) => {
-				this.editor.configureCustomSetting(setting, marker);
+			items.push({
+				name: marker.label,
+				searchable: false,
+				render: (setting: Setting) => {
+					this.editor.configureCustomSetting(setting, marker);
+				},
 			});
 		}
 
 		if (this.editor.isCreatorOpen) {
-			group.addSetting((setting: Setting) => {
-				this.editor.configureCreatorSetting(setting);
+			items.push({
+				name: "New marker",
+				searchable: false,
+				render: (setting: Setting) => {
+					this.editor.configureCreatorSetting(setting);
+				},
 			});
 		}
+
+		return items;
 	}
 
 	private getScrollContainer(): Element | null {
@@ -179,7 +177,13 @@ export class MarkrSettingTab extends PluginSettingTab {
 	}
 
 	private redisplayPreservingScroll(): void {
-		this.pendingScrollTop = this.getScrollContainer()?.scrollTop ?? null;
-		this.display();
+		const restoreScrollTop = this.getScrollContainer()?.scrollTop ?? null;
+		this.update();
+		if (restoreScrollTop !== null) {
+			requestAnimationFrame(() => {
+				const scroller = this.getScrollContainer();
+				if (scroller) scroller.scrollTop = restoreScrollTop;
+			});
+		}
 	}
 }

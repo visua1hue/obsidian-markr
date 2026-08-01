@@ -1,6 +1,6 @@
 {
   "name": "markr",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Prioritize list items with inline markdown.",
   "main": "main.js",
   "type": "module",
@@ -27,6 +27,6 @@
   "dependencies": {
     "@codemirror/state": "6.5.0",
     "@codemirror/view": "6.38.6",
-    "obsidian": "^1.11.0"
+    "obsidian": "^1.13.1"
   }
 }

@@ -20,9 +20,10 @@
 :root {
 	--mr-line-radius: 6px;
 	--mr-badge-radius: 4px;
-	--mr-settings-row-radius: 12px;
 	--mr-settings-preview-size: 1.2rem;
 	--mr-settings-icon-size: 24px;
+	--mr-settings-group-gap: 0.4rem; /* icon-picker → color-swatch group */
+	--mr-settings-base-gap: 0.5rem; /* trigger↔label, swatch↔swatch */
 }
 
 body.theme-light[data-markr] .mr-colorized {
@@ -211,8 +212,13 @@ li[data-mr-row="task"]:not(.mr-rv-li):not(:has(> p))::before {
 	z-index: -1;
 }
 
-/* Loose task (has <p>): band on lead <p>, nested <ul> is a sibling so untinted. */
-li[data-mr-row="task"]:not(.mr-rv-li) > p {
+/* Loose task: band on lead <p> only, not continuation paragraphs. :first-of-type
+   since <li> always has a .list-bullet span before the first <p>. */
+li[data-mr-row="task"]:not(.mr-rv-li) > p:first-of-type {
+	/* Extend into the <li>'s gutter to cover the checkbox (negative-margined
+	   there by Obsidian); padding keeps content position unchanged. */
+	margin-inline-start: -3ch;
+	padding-inline-start: 3ch;
 	background: color-mix(in oklch, var(--mr-marker-bg, transparent) 28%, transparent);
 	border-radius: var(--mr-line-radius);
 	box-shadow:
@@ -251,8 +257,10 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 	.mr-rv-row,
 	.mr-badge,
 	.mr-badge--settings,
-	.mr-settings-icon-btn {
-		corner-shape: squircle;
+	.mr-settings-icon-btn,
+	.setting-item.mr-settings-marker-row {
+		/* bare `squircle` keyword doesn't match Obsidian's own input curvature */
+		corner-shape: superellipse(1.33);
 	}
 }
 
@@ -305,13 +313,13 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
    differs — the widget sits higher than a mark, so nudge it back down so the
    icon state and the cursor-revealed mark state line up. */
 .mr-badge.mr-badge-icon {
-	vertical-align: -0.1em;
+	vertical-align: -0.14em;
 }
 
 .mr-badge.mr-badge-icon > svg,
 .mr-badge.mr-badge-icon > .svg-icon {
-	width: 1em;
-	height: 1em;
+	width: 1.1em;
+	height: 1.1em;
 	stroke-width: 2.25;
 	flex-shrink: 0;
 	display: block;
@@ -319,10 +327,18 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 
 /* ── Settings UI ─────────────────────────────────────────────────────────── */
 
+/* Obsidian's card bg is redundant once rows carry their own background —
+   scoped to markr's tab and just the marker group; Defaults keeps it. */
+.mr-settings-tab .setting-group .setting-items:has(.mr-settings-marker-row) {
+	background: none;
+}
+
 .setting-item-heading + .setting-item.mr-settings-marker-row {
 	margin-top: 0.5rem;
 }
 
+/* Obsidian's .setting-group styles rows as one connected card at higher
+   specificity than a plain two-class selector — !important wins the fight. */
 .setting-item.mr-settings-marker-row {
 	overflow: visible;
 	box-sizing: border-box;
@@ -330,11 +346,13 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 	align-items: center;
 	justify-content: flex-start;
 	gap: 0.9rem;
-	margin: 0.6rem 0;
-	padding: 0.55rem 0.9rem;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--mr-settings-row-radius);
-	background: var(--background-secondary);
+	margin: 0.6rem 0.5rem !important;
+	padding-block: 0.55rem !important;
+	padding-inline-start: 0.9rem !important;
+	padding-inline-end: 0.6rem !important;
+	border: none !important;
+	border-radius: calc(var(--input-radius) * 2) !important;
+	background: var(--background-secondary) !important;
 	box-shadow: 0 1px 0
 		color-mix(in srgb, var(--background-primary) 65%, transparent);
 	transition:
@@ -343,35 +361,34 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 		box-shadow 120ms ease;
 }
 
+/* Kills Obsidian's connected-card ::before divider — misaligned without our border. */
+.setting-item.mr-settings-marker-row::before {
+	content: none !important;
+}
 
 .setting-item.mr-settings-marker-row.mr-colorized {
 	background: color-mix(
 		in oklch,
 		var(--mr-marker-bg, transparent) 28%,
 		transparent
-	);
+	) !important;
 	border-color: color-mix(
 		in srgb,
 		var(--mr-marker-bg) 22%,
 		var(--background-modifier-border)
-	);
+	) !important;
 }
 
 
 body[data-markr] .setting-item.mr-settings-marker-row .setting-item-info {
-	display: flex;
-	align-items: center;
-	flex: 0 0 auto;
-	min-width: 0;
-	margin-right: 0;
-	padding: 0;
-	overflow: visible;
+	/* always empty (nameEl/descEl cleared); zero size alone still ate a `gap` unit */
+	display: none;
 }
 
 body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control {
 	display: flex;
 	align-items: center;
-	gap: 0.5rem;
+	gap: var(--mr-settings-base-gap);
 	flex: 1 1 auto;
 	flex-wrap: wrap;
 	justify-content: flex-start;
@@ -379,8 +396,16 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control {
 
 body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .extra-setting-button {
 	margin-left: auto;
-	width: 28px;
+	width: 26px;
 	padding-inline: 0;
+	color: var(--text-faint);
+	transition: color 120ms ease;
+}
+
+/* No background-color hover rule exists here or on the "+" button (checked) —
+   the warning orange just reads bigger against the row's tint, not a size bug. */
+body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .extra-setting-button:hover {
+	color: var(--text-warning);
 }
 
 .setting-item.mr-settings-marker-row .setting-item-name {
@@ -396,14 +421,6 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 	display: none;
 }
 
-.setting-group .setting-item.mr-settings-marker-row:first-child {
-	padding-top: 0.55rem;
-	border-top: 1px solid var(--background-modifier-border);
-}
-
-.setting-group .setting-item.mr-settings-marker-row:last-child {
-	padding-bottom: 0.55rem;
-}
 
 /* ── Marker badge in settings ────────────────────────────────────────────── */
 
@@ -414,13 +431,12 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 	max-width: var(--mr-settings-preview-size);
 	height: var(--mr-settings-preview-size);
 	padding: 0;
+	margin-left: 4px;
 	border-radius: var(--mr-badge-radius);
 	/* use fixed font-size so em-based icon sizes don't compound */
 	font-size: 0.78rem;
 	line-height: 1;
 	vertical-align: middle;
-	box-shadow: inset 0 0 0 1px
-		color-mix(in srgb, var(--mr-marker-fg, currentColor) 14%, transparent);
 }
 
 /* Icon sized relative to the badge dimension, not to the compounded em */
@@ -434,12 +450,10 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 /* Placeholder badge for the creator ghost row */
 .mr-settings-creator-badge {
 	background: transparent;
-	box-shadow: inset 0 0 0 1px var(--background-modifier-border);
 }
 
-
 .setting-item.mr-settings-marker-row--removing {
-	animation: mr-row-remove 150ms ease-in forwards;
+	animation: mr-row-remove 150ms ease-in forwards !important;
 	overflow: hidden;
 	pointer-events: none;
 }
@@ -450,11 +464,9 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 		max-height: 300px;
 		margin-top: 0.6rem;
 		margin-bottom: 0.6rem;
-		transform: translateX(0);
 	}
 	35% {
 		opacity: 0;
-		transform: translateX(6px);
 	}
 	100% {
 		opacity: 0;
@@ -493,21 +505,15 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 	display: contents;
 }
 
-.mr-settings-row1 > .mr-settings-inputs      { order: 2; }
-.mr-settings-row2 > .mr-badge--settings      { order: 1; }
-.mr-settings-row2 > .mr-settings-icon-btn    { order: 3; }
-.mr-settings-row2 > .mr-settings-color-wrap  { order: 4; }
+.mr-settings-row1 > .mr-badge--settings        { order: 1; }
+.mr-settings-row1 > .mr-settings-input--trigger { order: 2; }
+.mr-settings-row1 > .mr-settings-input--label   { order: 3; }
+.mr-settings-row2 > .mr-settings-icon-btn       { order: 4; }
+.mr-settings-row2 > .mr-settings-color-wrap     { order: 5; }
 .mr-settings-row1 > .mr-settings-lock-icon,
-.mr-settings-row1 > .extra-setting-button    { order: 5; }
+.mr-settings-row1 > .extra-setting-button       { order: 6; }
 
 /* ── Editor inputs ───────────────────────────────────────────────────────── */
-
-.mr-settings-inputs {
-	display: flex;
-	gap: 0.5rem;
-	flex: 1 1 0;
-	min-width: 0;
-}
 
 .mr-settings-input {
 	min-width: 0;
@@ -526,7 +532,7 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 /* ── Color circles ───────────────────────────────────────────────────────── */
 
 .mr-settings-icon-btn + .mr-settings-color-wrap {
-	margin-left: 0.4rem;
+	margin-left: var(--mr-settings-group-gap);
 }
 
 .mr-settings-color-wrap {
@@ -613,11 +619,24 @@ input.mr-settings-input--color::-moz-color-swatch {
 	height: 26px;
 	border: 1px solid var(--background-modifier-border);
 	border-radius: 10px;
-	background: transparent;
 	cursor: pointer;
 	box-sizing: border-box;
 	margin-left: 0.4rem;
-	transition: border-color 120ms ease, background-color 120ms ease;
+	transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+/* `button:not(.clickable-icon)` in app.css beats a bare class on specificity;
+   qualifying with the element type / doubling the class wins both below. */
+button.mr-settings-icon-btn {
+	background: transparent;
+}
+
+.mr-settings-icon-btn.mr-settings-icon-btn--placeholder {
+	color: var(--text-faint);
+}
+
+.mr-settings-icon-btn--placeholder:hover {
+	color: var(--text-muted);
 }
 
 .mr-settings-icon-btn svg,
@@ -629,12 +648,17 @@ input.mr-settings-input--color::-moz-color-swatch {
 	stroke-width: var(--icon-s-stroke-width);
 }
 
+.mr-settings-icon-btn--placeholder svg,
+.mr-settings-icon-btn--placeholder .svg-icon {
+	width: 1.15rem;
+	height: 1.15rem;
+}
+
 .mr-settings-icon-btn.mr-colorized {
 	color: var(--mr-marker-fg);
 }
 
 .mr-settings-icon-btn:disabled {
-	background: color-mix(in srgb, var(--background-modifier-border) 25%, transparent);
 	cursor: not-allowed;
 	pointer-events: none;
 }
@@ -654,8 +678,8 @@ input.mr-settings-input--color::-moz-color-swatch {
 	align-items: center;
 	justify-content: center;
 	flex-shrink: 0;
-	width: 28px;
-	height: 28px;
+	width: 26px;
+	height: 26px;
 	color: var(--text-faint);
 }
 
@@ -735,56 +759,65 @@ body.is-phone[data-markr] .setting-item.mr-settings-marker-row .setting-item-inf
 /* Obsidian phone CSS sets gap:var(--size-4-4) on all .setting-item — zero it for our rows */
 body.is-phone[data-markr] .setting-item.mr-settings-marker-row {
 	gap: 0;
+	/* Match the Defaults group card's edge inset instead of desktop's own margin. */
+	margin-inline: 0 !important;
+	/* var(--input-radius) (44px) reads oversized on a ~90px-tall row — match the
+	   Defaults card's own radius instead. */
+	border-radius: 30px !important;
 }
 
-
-/* Row containers become real flex rows (override display:contents) */
+/* Row containers become real flex rows (override display:contents).
+   Row 1 = badge + trigger + label, action button pushed to the far right.
+   Row 2 = icon picker + swatches, indented to align under row 1's trigger. */
 .is-phone .mr-settings-row1,
 .is-phone .mr-settings-row2 {
 	display: flex;
 	align-items: center;
-	gap: 0.5rem;
+	gap: var(--mr-settings-base-gap);
 }
 
-/* Row 1: inputs fill, action button at far right */
-.is-phone .mr-settings-row1 .mr-settings-inputs {
+/* row1 is otherwise shrink-to-fit, leaving no room for margin-left: auto
+   to push the button into — force it full-width. */
+.is-phone .mr-settings-row1 {
+	flex: 1 1 100%;
+}
+
+/* Matches the row's right inset (lock/delete button) so the badge and the
+   action button read as symmetric side padding. Overrides the base 4px
+   margin-left (not additive with it). */
+.is-phone .mr-settings-row1 > .mr-badge--settings {
+	margin-left: 5.4px;
+}
+
+.is-phone .mr-settings-row1 .mr-settings-lock-icon,
+.is-phone .mr-settings-row1 .extra-setting-button {
+	margin-left: auto;
+	/* Aligns the button's right edge with the heading's "+" button — our own
+	   padding-inline-end alone only gets it to ~8px. */
+	margin-right: 9.6px;
+}
+
+.is-phone .mr-settings-row2 {
+	/* Measured to match row 1's badge width + gap so row 2 lines up under the
+	   trigger — the badge's rendered width doesn't map cleanly to a variable. */
+	padding-left: 27.8px;
+}
+
+.is-phone .mr-settings-input--label {
 	flex: 1 1 auto;
 	min-width: 0;
+	width: auto !important;
 }
 
-/* Row 2: icon picker moves to end; space before colors aligns them under label */
-.is-phone .mr-settings-row2 .mr-settings-icon-btn {
-	order: 10;
+.is-phone .mr-settings-icon-btn {
 	width: 26px !important;
 	flex: 0 0 26px;
-	margin-left: 0.5rem;
-}
-
-/* Reset desktop adjacent-sibling margin (icon btn no longer visually first) */
-.is-phone .mr-settings-icon-btn + .mr-settings-color-wrap {
-	margin-left: 0;
-}
-
-/* Indent badge from row left edge */
-.is-phone .mr-settings-row2 > .mr-badge--settings {
-	margin-left: 8px;
-}
-
-/* Space between badge and first color circle */
-.is-phone .mr-settings-row2 > .mr-settings-color-wrap:first-of-type {
-	margin-left: calc(4.25rem - var(--mr-settings-preview-size));
 }
 
 /* Obsidian phone CSS forces width:100% on text inputs — clamp ours */
 .is-phone .mr-settings-input--trigger {
 	width: 4.25rem !important;
 	flex: 0 0 4.25rem;
-}
-
-.is-phone .mr-settings-input--label {
-	flex: 1 1 0;
-	min-width: 0;
-	width: auto !important;
 }
 
 /* Obsidian sets --input-height:44px + 16px side padding on mobile — reduce for compact rows */

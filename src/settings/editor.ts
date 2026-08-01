@@ -162,9 +162,16 @@ export class MarkerEditor {
 	}
 
 	closeCreator(): void {
+		// Fires from hide() when the tab closes with the creator still open.
+		// The settings framework caches getSettingDefinitions()'s last result
+		// and reuses it to redraw on the tab's next open — without a redisplay
+		// here, that cache still holds the creator row and it reappears even
+		// though isCreatorOpen is correctly false.
+		this.creatorRefs?.rowEl.remove();
 		this.creatorOpen = false;
 		this.creatorDraft = { ...DEFAULT_DRAFT };
 		this.creatorRefs = null;
+		this.redisplay();
 	}
 
 	openCreator(): void {
@@ -190,14 +197,14 @@ export class MarkerEditor {
 		setting.settingEl.addClass("mr-colorized");
 
 		const draft = this.draftFromPriority(marker);
-		const { row1, row2 } = this.buildRowInputs(setting.controlEl, draft, {
+		const { row1 } = this.buildRowInputs(setting.controlEl, draft, {
 			disabled: true,
 			badgeEl: null,
 			onBlur: () => {},
 		});
 
-		// Badge goes to row2 directly (skip updatePreview to preserve split-color dark mode)
-		row2.prepend(this.buildMarkerBadge(marker));
+		// Badge goes to row1 directly (skip updatePreview to preserve split-color dark mode)
+		row1.prepend(this.buildMarkerBadge(marker));
 
 		const lockEl = row1.createEl("span", {
 			cls: "mr-settings-lock-icon",
@@ -235,18 +242,24 @@ export class MarkerEditor {
 			attr: { type: "button", "aria-label": "Remove custom marker", "data-tooltip-position": "top" },
 		});
 		setIcon(deleteBtn, "x");
-		this.plugin.registerDomEvent(deleteBtn, "click", async () => {
-			animateOut(
-				setting.settingEl,
-				"mr-settings-marker-row--removing",
-				() => setting.settingEl.remove(),
-				this.plugin,
-			);
-			await this.plugin.updateSettings(
+		this.plugin.registerDomEvent(deleteBtn, "click", () => {
+			const removed = this.plugin.updateSettings(
 				(settings: PluginSettings) => ({
 					...settings,
 					markers: settings.markers.filter((e) => e.id !== marker.id),
 				}),
+			);
+			animateOut(
+				setting.settingEl,
+				"mr-settings-marker-row--removing",
+				() => {
+					setting.settingEl.remove();
+					// Resync the framework's settingItems cache (search index,
+					// predicate re-evaluation) once removal is actually persisted —
+					// deferred until after the fade so it doesn't cut the animation short.
+					void removed.then(() => this.redisplay());
+				},
+				this.plugin,
 			);
 		});
 
@@ -340,28 +353,25 @@ export class MarkerEditor {
 				}
 			}
 
-			// Row background tint
+			// Row background tint — draft.bg/fg are never empty, so always colorized.
 			if (opts.rowEl) {
-				const hasDraft = opts.badgeEl
-					? draft.trigger.trim().length > 0 || draft.icon.length > 0
-					: true;
-				if (hasDraft) {
-					opts.rowEl.setCssProps(colorVars());
-					opts.rowEl.addClass("mr-colorized");
-				} else {
-					opts.rowEl.removeClass("mr-colorized");
-					opts.rowEl.removeAttribute("style");
-				}
+				opts.rowEl.setCssProps(colorVars());
+				opts.rowEl.addClass("mr-colorized");
 			}
 		};
 
-		// ── Row 1: trigger + label inputs ────────────────────────────────────
+		// ── Row 1: badge (if provided) + trigger + label ──────────────────────
 
-		const inputsWrap = row1.createDiv({ cls: "mr-settings-inputs" });
+		if (opts.badgeEl) row1.appendChild(opts.badgeEl);
 
-		const triggerInput = inputsWrap.createEl("input", {
+		const triggerInput = row1.createEl("input", {
 			cls: "mr-settings-input mr-settings-input--trigger",
-			attr: { type: "text", placeholder: "!", "aria-label": "Trigger" },
+			attr: {
+				type: "text",
+				placeholder: "!",
+				"aria-label": "Trigger",
+				maxlength: "3",
+			},
 		});
 		triggerInput.value = draft.trigger;
 		if (opts.disabled) {
@@ -374,7 +384,7 @@ export class MarkerEditor {
 			this.plugin.registerDomEvent(triggerInput, "blur", opts.onBlur);
 		}
 
-		const labelInput = inputsWrap.createEl("input", {
+		const labelInput = row1.createEl("input", {
 			cls: "mr-settings-input mr-settings-input--label",
 			attr: { type: "text", placeholder: "Label", "aria-label": "Label" },
 		});
@@ -392,13 +402,11 @@ export class MarkerEditor {
 			requestAnimationFrame(() => triggerInput.focus());
 		}
 
-		// ── Row 2: badge (if provided) + icon picker + color swatches ────────
-
-		if (opts.badgeEl) row2.appendChild(opts.badgeEl);
+		// ── Row 2: icon picker + color swatches ────────────────────────────────
 
 		iconBtn = row2.createEl("button", {
 			cls: "mr-settings-icon-btn",
-			attr: { type: "button", "aria-label": "Select icon" },
+			attr: { type: "button", "aria-label": "Custom icon", "data-tooltip-position": "top" },
 		});
 		if (opts.disabled) {
 			iconBtn.disabled = true;
@@ -477,6 +485,10 @@ export class MarkerEditor {
 		btn.empty();
 		if (iconId) {
 			setIcon(btn, iconId);
+			btn.removeClass("mr-settings-icon-btn--placeholder");
+		} else {
+			setIcon(btn, "squircle-dashed");
+			btn.addClass("mr-settings-icon-btn--placeholder");
 		}
 	}
 
@@ -516,7 +528,17 @@ export class MarkerEditor {
 		this.creatorRefs = null;
 		this.creatorOpen = false;
 		this.creatorDraft = { ...DEFAULT_DRAFT };
-		animateOut(rowEl, "mr-settings-marker-row--removing", () => rowEl.remove(), this.plugin);
+		animateOut(
+			rowEl,
+			"mr-settings-marker-row--removing",
+			() => {
+				rowEl.remove();
+				// Resync the framework's cached settingItems (see closeCreator());
+				// deferred until after the fade so it doesn't cut it short.
+				this.redisplay();
+			},
+			this.plugin,
+		);
 	}
 
 	// ── Private: data operations ───────────────────────────────────────────
