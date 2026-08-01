@@ -319,6 +319,13 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 
 /* ── Settings UI ─────────────────────────────────────────────────────────── */
 
+/* Obsidian 1.13 gives every .setting-group a card background behind its
+   .setting-items — scoped to Markr's own tab via containerEl's mr-settings-tab
+   class so other plugins'/core's settings groups keep the host's default. */
+.mr-settings-tab .setting-group .setting-items {
+	background: none;
+}
+
 .setting-item-heading + .setting-item.mr-settings-marker-row {
 	margin-top: 0.5rem;
 }

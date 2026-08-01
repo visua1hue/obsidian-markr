@@ -24,6 +24,9 @@ export class MarkrSettingTab extends PluginSettingTab {
 		this.editor = new MarkerEditor(app, plugin, () =>
 			this.redisplayPreservingScroll(),
 		);
+		// Scoping hook for styles.css — containerEl is generic
+		// (.vertical-tab-content) with nothing tab-specific to key off.
+		this.containerEl.addClass("mr-settings-tab");
 	}
 
 	override hide(): void {
