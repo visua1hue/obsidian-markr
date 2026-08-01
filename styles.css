@@ -308,7 +308,7 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
    differs — the widget sits higher than a mark, so nudge it back down so the
    icon state and the cursor-revealed mark state line up. */
 .mr-badge.mr-badge-icon {
-	vertical-align: -0.1em;
+	vertical-align: -0.14em;
 }
 
 .mr-badge.mr-badge-icon > svg,
