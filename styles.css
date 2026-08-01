@@ -212,8 +212,13 @@ li[data-mr-row="task"]:not(.mr-rv-li):not(:has(> p))::before {
 	z-index: -1;
 }
 
-/* Loose task (has <p>): band on lead <p>, nested <ul> is a sibling so untinted. */
-li[data-mr-row="task"]:not(.mr-rv-li) > p {
+/* Loose task: band on lead <p> only, not continuation paragraphs. :first-of-type
+   since <li> always has a .list-bullet span before the first <p>. */
+li[data-mr-row="task"]:not(.mr-rv-li) > p:first-of-type {
+	/* Extend into the <li>'s gutter to cover the checkbox (negative-margined
+	   there by Obsidian); padding keeps content position unchanged. */
+	margin-inline-start: -3ch;
+	padding-inline-start: 3ch;
 	background: color-mix(in oklch, var(--mr-marker-bg, transparent) 28%, transparent);
 	border-radius: var(--mr-line-radius);
 	box-shadow:
