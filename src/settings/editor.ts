@@ -374,7 +374,12 @@ export class MarkerEditor {
 
 		const triggerInput = inputsWrap.createEl("input", {
 			cls: "mr-settings-input mr-settings-input--trigger",
-			attr: { type: "text", placeholder: "!", "aria-label": "Trigger" },
+			attr: {
+				type: "text",
+				placeholder: "!",
+				"aria-label": "Trigger",
+				maxlength: "3",
+			},
 		});
 		triggerInput.value = draft.trigger;
 		if (opts.disabled) {
