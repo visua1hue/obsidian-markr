@@ -350,7 +350,7 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 	padding-block: 0.55rem !important;
 	padding-inline-start: 0.9rem !important;
 	padding-inline-end: 0.6rem !important;
-	border: 1px solid var(--background-modifier-border) !important;
+	border: none !important;
 	border-radius: var(--input-radius) !important;
 	background: var(--background-secondary) !important;
 	box-shadow: 0 1px 0
@@ -361,6 +361,10 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 		box-shadow 120ms ease;
 }
 
+/* Kills Obsidian's connected-card ::before divider — misaligned without our border. */
+.setting-item.mr-settings-marker-row::before {
+	content: none !important;
+}
 
 .setting-item.mr-settings-marker-row.mr-colorized {
 	background: color-mix(
