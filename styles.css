@@ -453,7 +453,7 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 }
 
 .setting-item.mr-settings-marker-row--removing {
-	animation: mr-row-remove 150ms ease-in forwards;
+	animation: mr-row-remove 150ms ease-in forwards !important;
 	overflow: hidden;
 	pointer-events: none;
 }
@@ -464,11 +464,9 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 		max-height: 300px;
 		margin-top: 0.6rem;
 		margin-bottom: 0.6rem;
-		transform: translateX(0);
 	}
 	35% {
 		opacity: 0;
-		transform: translateX(6px);
 	}
 	100% {
 		opacity: 0;
