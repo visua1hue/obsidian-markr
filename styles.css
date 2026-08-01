@@ -20,7 +20,6 @@
 :root {
 	--mr-line-radius: 6px;
 	--mr-badge-radius: 4px;
-	--mr-settings-row-radius: 12px;
 	--mr-settings-preview-size: 1.2rem;
 	--mr-settings-icon-size: 24px;
 }
@@ -251,8 +250,11 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 	.mr-rv-row,
 	.mr-badge,
 	.mr-badge--settings,
-	.mr-settings-icon-btn {
-		corner-shape: squircle;
+	.mr-settings-icon-btn,
+	.setting-item.mr-settings-marker-row {
+		/* The bare `squircle` keyword doesn't match Obsidian's own input
+		   curvature — use the same explicit exponent so radii actually align. */
+		corner-shape: superellipse(1.33);
 	}
 }
 
@@ -348,7 +350,7 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 	margin: 0.6rem 0 !important;
 	padding: 0.55rem 0.9rem !important;
 	border: 1px solid var(--background-modifier-border) !important;
-	border-radius: var(--mr-settings-row-radius) !important;
+	border-radius: var(--input-radius) !important;
 	background: var(--background-secondary) !important;
 	box-shadow: 0 1px 0
 		color-mix(in srgb, var(--background-primary) 65%, transparent);
