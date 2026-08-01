@@ -235,18 +235,24 @@ export class MarkerEditor {
 			attr: { type: "button", "aria-label": "Remove custom marker", "data-tooltip-position": "top" },
 		});
 		setIcon(deleteBtn, "x");
-		this.plugin.registerDomEvent(deleteBtn, "click", async () => {
-			animateOut(
-				setting.settingEl,
-				"mr-settings-marker-row--removing",
-				() => setting.settingEl.remove(),
-				this.plugin,
-			);
-			await this.plugin.updateSettings(
+		this.plugin.registerDomEvent(deleteBtn, "click", () => {
+			const removed = this.plugin.updateSettings(
 				(settings: PluginSettings) => ({
 					...settings,
 					markers: settings.markers.filter((e) => e.id !== marker.id),
 				}),
+			);
+			animateOut(
+				setting.settingEl,
+				"mr-settings-marker-row--removing",
+				() => {
+					setting.settingEl.remove();
+					// Resync the framework's settingItems cache (search index,
+					// predicate re-evaluation) once removal is actually persisted —
+					// deferred until after the fade so it doesn't cut the animation short.
+					void removed.then(() => this.redisplay());
+				},
+				this.plugin,
 			);
 		});
 
