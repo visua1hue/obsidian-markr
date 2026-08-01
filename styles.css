@@ -450,9 +450,7 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 /* Placeholder badge for the creator ghost row */
 .mr-settings-creator-badge {
 	background: transparent;
-	box-shadow: inset 0 0 0 1px var(--background-modifier-border);
 }
-
 
 .setting-item.mr-settings-marker-row--removing {
 	animation: mr-row-remove 150ms ease-in forwards;
