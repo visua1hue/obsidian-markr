@@ -180,6 +180,7 @@ export class MarkrSettingTab extends PluginSettingTab {
 
 	private redisplayPreservingScroll(): void {
 		this.pendingScrollTop = this.getScrollContainer()?.scrollTop ?? null;
+		// eslint-disable-next-line @typescript-eslint/no-deprecated -- call site removed once redisplay goes through this.update(), see refactor.md
 		this.display();
 	}
 }
