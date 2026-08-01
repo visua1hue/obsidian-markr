@@ -31,6 +31,59 @@ export class MarkrSettingTab extends PluginSettingTab {
 		this.editor.closeCreator();
 	}
 
+	// Bridge for declarative `control` definitions: PluginSettings is nested +
+	// readonly, so the framework's default `plugin.settings[key]` binding can't
+	// read/write it directly. Dot-path keys route through updateSettings instead.
+	override getControlValue(key: string): unknown {
+		switch (key) {
+			case "priority.enabled":
+				return this.plugin.settings.priority.enabled;
+			case "behavior.hideMarkerWhenCursorAway":
+				return this.plugin.settings.behavior.hideMarkerWhenCursorAway;
+			case "behavior.showTooltips":
+				return this.plugin.settings.behavior.showTooltips;
+			case "performance.applyInReadingView":
+				return this.plugin.settings.performance.applyInReadingView;
+			default:
+				return undefined;
+		}
+	}
+
+	override async setControlValue(key: string, value: unknown): Promise<void> {
+		switch (key) {
+			case "priority.enabled":
+				await this.plugin.updateSettings((settings: PluginSettings) => ({
+					...settings,
+					priority: { enabled: value as boolean },
+				}));
+				return;
+			case "behavior.hideMarkerWhenCursorAway":
+				await this.plugin.updateSettings((settings: PluginSettings) => ({
+					...settings,
+					behavior: {
+						...settings.behavior,
+						hideMarkerWhenCursorAway: value as boolean,
+					},
+				}));
+				return;
+			case "behavior.showTooltips":
+				await this.plugin.updateSettings((settings: PluginSettings) => ({
+					...settings,
+					behavior: { ...settings.behavior, showTooltips: value as boolean },
+				}));
+				return;
+			case "performance.applyInReadingView":
+				await this.plugin.updateSettings((settings: PluginSettings) => ({
+					...settings,
+					performance: {
+						...settings.performance,
+						applyInReadingView: value as boolean,
+					},
+				}));
+				return;
+		}
+	}
+
 	display(): void {
 		const { containerEl } = this;
 		const restoreScrollTop = this.pendingScrollTop;
