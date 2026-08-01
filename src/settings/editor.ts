@@ -490,6 +490,10 @@ export class MarkerEditor {
 		btn.empty();
 		if (iconId) {
 			setIcon(btn, iconId);
+			btn.removeClass("mr-settings-icon-btn--placeholder");
+		} else {
+			setIcon(btn, "squircle-dashed");
+			btn.addClass("mr-settings-icon-btn--placeholder");
 		}
 	}
 

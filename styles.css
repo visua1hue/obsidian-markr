@@ -624,7 +624,17 @@ input.mr-settings-input--color::-moz-color-swatch {
 	cursor: pointer;
 	box-sizing: border-box;
 	margin-left: 0.4rem;
-	transition: border-color 120ms ease, background-color 120ms ease;
+	transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+/* Specificity note: Obsidian's `button:not(.clickable-icon)` sets color at
+   (0,1,1), edging out a plain single class — double up to win. */
+.mr-settings-icon-btn.mr-settings-icon-btn--placeholder {
+	color: var(--text-faint);
+}
+
+.mr-settings-icon-btn--placeholder:hover {
+	color: var(--text-normal);
 }
 
 .mr-settings-icon-btn svg,
