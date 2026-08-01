@@ -162,9 +162,16 @@ export class MarkerEditor {
 	}
 
 	closeCreator(): void {
+		// Fires from hide() when the tab closes with the creator still open.
+		// The settings framework caches getSettingDefinitions()'s last result
+		// and reuses it to redraw on the tab's next open — without a redisplay
+		// here, that cache still holds the creator row and it reappears even
+		// though isCreatorOpen is correctly false.
+		this.creatorRefs?.rowEl.remove();
 		this.creatorOpen = false;
 		this.creatorDraft = { ...DEFAULT_DRAFT };
 		this.creatorRefs = null;
+		this.redisplay();
 	}
 
 	openCreator(): void {
@@ -522,7 +529,17 @@ export class MarkerEditor {
 		this.creatorRefs = null;
 		this.creatorOpen = false;
 		this.creatorDraft = { ...DEFAULT_DRAFT };
-		animateOut(rowEl, "mr-settings-marker-row--removing", () => rowEl.remove(), this.plugin);
+		animateOut(
+			rowEl,
+			"mr-settings-marker-row--removing",
+			() => {
+				rowEl.remove();
+				// Resync the framework's cached settingItems (see closeCreator());
+				// deferred until after the fade so it doesn't cut it short.
+				this.redisplay();
+			},
+			this.plugin,
+		);
 	}
 
 	// ── Private: data operations ───────────────────────────────────────────
