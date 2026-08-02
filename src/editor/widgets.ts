@@ -32,7 +32,7 @@ export class BadgeWidget extends WidgetType {
 	}
 
 	toDOM(): HTMLElement {
-		const el = document.createElement("span");
+		const el = createSpan();
 		el.className = `mr-badge mr-badge-${this.defId} mr-badge-icon mr-badge-enter mr-colorized`;
 		el.setCssProps(this.cssVars);
 		setIcon(el, this.icon);

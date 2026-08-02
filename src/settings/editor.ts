@@ -96,7 +96,7 @@ function animateOut(
 		onDone();
 	};
 	component.registerDomEvent(el, "animationend", finish, { once: true });
-	setTimeout(finish, 160);
+	window.setTimeout(finish, 160);
 }
 
 // ── Icon picker modal ──────────────────────────────────────────────────────
@@ -276,7 +276,7 @@ export class MarkerEditor {
 		setting.nameEl.empty();
 		setting.descEl.empty();
 
-		const badgeEl = document.createElement("span");
+		const badgeEl = createSpan();
 		badgeEl.className = "mr-badge mr-badge--settings mr-settings-creator-badge";
 		badgeEl.setAttribute("aria-hidden", "true");
 
@@ -399,7 +399,7 @@ export class MarkerEditor {
 		}
 
 		if (opts.autofocus) {
-			requestAnimationFrame(() => triggerInput.focus());
+			window.requestAnimationFrame(() => triggerInput.focus());
 		}
 
 		// ── Row 2: icon picker + color swatches ────────────────────────────────
@@ -495,7 +495,7 @@ export class MarkerEditor {
 	// ── Private: badge ─────────────────────────────────────────────────────
 
 	private buildMarkerBadge(marker: MarkerDef): HTMLElement {
-		const badge = document.createElement("span");
+		const badge = createSpan();
 		badge.className = `mr-badge mr-badge--settings mr-colorized mr-badge-${marker.id}`;
 		const badgeBg = marker.badgeBg ?? (marker.kind === "priority" ? "var(--mr-marker-bg)" : undefined);
 		badge.setCssProps(markerCssVars(marker.color, badgeBg));

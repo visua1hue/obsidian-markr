@@ -97,7 +97,7 @@ li.mr-rv-li {
    while every child (bullet span, checkbox, text) stays at its original position. */
 li.mr-rv-li[data-mr-row="bullet"],
 li.mr-rv-li[data-mr-row="task"] {
-	margin-inline-start: 0 !important;
+	margin-inline-start: 0;
 	padding-inline-start: 3ch;
 }
 
@@ -110,7 +110,7 @@ li.mr-rv-li[data-mr-row="task"] {
 .markdown-rendered ol ul > li.mr-rv-li[data-mr-row="bullet"],
 .markdown-rendered ul ul > li.mr-rv-li[data-mr-row="task"],
 .markdown-rendered ol ul > li.mr-rv-li[data-mr-row="task"] {
-	margin-inline-start: -3ch !important;
+	margin-inline-start: -3ch;
 	padding-inline-start: calc(3ch + var(--list-indent, 2.25em));
 }
 
@@ -156,7 +156,7 @@ li.mr-rv-li .mr-rv-row {
    left with negative margin to cover the bullet gutter. Content padding
    keeps badge + text at their original visual position. */
 li[data-mr-row="bullet"]:not(.mr-rv-li) {
-	margin-inline-start: 0 !important;
+	margin-inline-start: 0;
 	padding-inline-start: 3ch;
 }
 
@@ -182,7 +182,7 @@ li[data-mr-row="bullet"]:not(.mr-rv-li) .mr-rv-row {
    Loose list (has <p>): band on the lead <p> which wraps label content only.
    Both: band cleared from .mr-rv-row--task (inline, can't be full-width). */
 li[data-mr-row="task"]:not(.mr-rv-li) {
-	margin-inline-start: 0 !important;
+	margin-inline-start: 0;
 	padding-inline-start: 3ch;
 }
 
@@ -759,10 +759,12 @@ body.is-phone[data-markr] .setting-item.mr-settings-marker-row .setting-item-inf
 /* Obsidian phone CSS sets gap:var(--size-4-4) on all .setting-item — zero it for our rows */
 body.is-phone[data-markr] .setting-item.mr-settings-marker-row {
 	gap: 0;
-	/* Match the Defaults group card's edge inset instead of desktop's own margin. */
+	/* Match the Defaults group card's edge inset instead of desktop's own margin.
+	   !important: must beat the unscoped desktop rule above (also !important —
+	   importance is compared before specificity, so a scoped selector alone isn't enough). */
 	margin-inline: 0 !important;
 	/* var(--input-radius) (44px) reads oversized on a ~90px-tall row — match the
-	   Defaults card's own radius instead. */
+	   Defaults card's own radius instead. Same !important requirement as margin-inline above. */
 	border-radius: 30px !important;
 }
 
