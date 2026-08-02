@@ -21,7 +21,19 @@ export default class MarkrPlugin extends Plugin {
 				}
 			: DEFAULT_SETTINGS;
 
+		// styles.css gates on body[data-markr] -- every window needs it, not
+		// just the main one onload alone would reach.
 		document.body.dataset.markr = "";
+		this.app.workspace.onLayoutReady(() => {
+			this.app.workspace.iterateAllLeaves((leaf) => {
+				leaf.view.containerEl.doc.body.dataset.markr = "";
+			});
+		});
+		this.registerEvent(
+			this.app.workspace.on("window-open", (_, win) => {
+				win.document.body.dataset.markr = "";
+			}),
+		);
 
 		this.registerEditorExtension(buildMarkrExtension(() => this.settings));
 		this.registerMarkdownPostProcessor(
@@ -35,6 +47,9 @@ export default class MarkrPlugin extends Plugin {
 
 	onunload(): void {
 		delete document.body.dataset.markr;
+		this.app.workspace.iterateAllLeaves((leaf) => {
+			delete leaf.view.containerEl.doc.body.dataset.markr;
+		});
 	}
 
 	async updateSettings(
