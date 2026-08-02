@@ -1,9 +1,20 @@
 import { Plugin } from "obsidian";
-import { DEFAULT_SETTINGS, type PluginSettings } from "./settings/types";
+import { DEFAULT_SETTINGS, type MarkerDef, type PluginSettings } from "./settings/types";
 import { MarkrSettingTab } from "./settings";
 import { buildMarkrExtension } from "./editor/viewPlugin";
 import { buildPostProcessor } from "./reading/postProcessor";
 import { registerCommands, syncCustomMarkerCommands } from "./commands";
+
+// Priority markers aren't user-editable, so a saved copy is never user
+// intent -- always resync from defaults so fixes reach existing vaults.
+function withCurrentPriorityDefaults(markers: readonly MarkerDef[]): MarkerDef[] {
+	const defaults = new Map(
+		DEFAULT_SETTINGS.markers
+			.filter((m): m is Extract<MarkerDef, { kind: "priority" }> => m.kind === "priority")
+			.map((m) => [m.id, m]),
+	);
+	return markers.map((m) => (m.kind === "priority" ? (defaults.get(m.id) ?? m) : m));
+}
 
 export default class MarkrPlugin extends Plugin {
 	settings: PluginSettings = DEFAULT_SETTINGS;
@@ -15,6 +26,7 @@ export default class MarkrPlugin extends Plugin {
 			? {
 					...DEFAULT_SETTINGS,
 					...loaded,
+					markers: withCurrentPriorityDefaults(loaded.markers ?? DEFAULT_SETTINGS.markers),
 					priority: { ...DEFAULT_SETTINGS.priority, ...(loaded.priority ?? {}) },
 					behavior: { ...DEFAULT_SETTINGS.behavior, ...(loaded.behavior ?? {}) },
 					performance: { ...DEFAULT_SETTINGS.performance, ...(loaded.performance ?? {}) },
