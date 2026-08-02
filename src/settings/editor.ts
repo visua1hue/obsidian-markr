@@ -239,7 +239,7 @@ export class MarkerEditor {
 
 		const deleteBtn = row1.createEl("button", {
 			cls: "clickable-icon extra-setting-button",
-			attr: { type: "button", "aria-label": "Remove custom marker", "data-tooltip-position": "top" },
+			attr: { type: "button", "aria-label": "Remove custom marker" },
 		});
 		setIcon(deleteBtn, "x");
 		this.plugin.registerDomEvent(deleteBtn, "click", () => {
