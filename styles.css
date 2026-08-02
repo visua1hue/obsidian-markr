@@ -408,6 +408,12 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 	color: var(--text-warning);
 }
 
+/* Delete button hover only — same vars as Obsidian's own button.mod-destructive. */
+body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .extra-setting-button.mr-settings-delete-btn:hover {
+	color: var(--text-error);
+	background-color: color-mix(in oklch, var(--background-modifier-error) 10%, transparent);
+}
+
 .setting-item.mr-settings-marker-row .setting-item-name {
 	display: flex;
 	align-items: center;

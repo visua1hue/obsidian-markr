@@ -238,7 +238,7 @@ export class MarkerEditor {
 		});
 
 		const deleteBtn = row1.createEl("button", {
-			cls: "clickable-icon extra-setting-button",
+			cls: "clickable-icon extra-setting-button mr-settings-delete-btn",
 			attr: { type: "button" },
 		});
 		setIcon(deleteBtn, "x");
@@ -289,7 +289,7 @@ export class MarkerEditor {
 		});
 
 		const cancelBtn = row1.createEl("button", {
-			cls: "clickable-icon extra-setting-button",
+			cls: "clickable-icon extra-setting-button mr-settings-delete-btn",
 			attr: { type: "button" },
 		});
 		setIcon(cancelBtn, "x");
