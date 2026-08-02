@@ -290,7 +290,7 @@ export class MarkerEditor {
 
 		const cancelBtn = row1.createEl("button", {
 			cls: "clickable-icon extra-setting-button",
-			attr: { type: "button", "aria-label": "Cancel new marker", "data-tooltip-position": "top" },
+			attr: { type: "button", "aria-label": "Cancel new marker" },
 		});
 		setIcon(cancelBtn, "x");
 		this.plugin.registerDomEvent(cancelBtn, "click", () => {
