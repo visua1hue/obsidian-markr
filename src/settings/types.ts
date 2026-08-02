@@ -59,7 +59,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 			color: {
 				kind: "split",
 				light: { bg: "#FFC4CA", fg: "#7A1F25" },
-				dark: { bg: "#5A1F25", fg: "#FFC4CA" },
+				dark: { bg: "#A8434F", fg: "#FFC4CA" },
 			},
 			icon: null,
 		},
@@ -71,7 +71,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 			color: {
 				kind: "split",
 				light: { bg: "#FFC4CA", fg: "#7A1F25" },
-				dark: { bg: "#5A1F25", fg: "#FFC4CA" },
+				dark: { bg: "#A8434F", fg: "#FFC4CA" },
 			},
 			icon: null,
 		},
@@ -83,7 +83,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
 			color: {
 				kind: "split",
 				light: { bg: "#FFC4CA", fg: "#7A1F25" },
-				dark: { bg: "#5A1F25", fg: "#FFC4CA" },
+				dark: { bg: "#A8434F", fg: "#FFC4CA" },
 			},
 			icon: null,
 		},

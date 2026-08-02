@@ -238,8 +238,8 @@ export class MarkerEditor {
 		});
 
 		const deleteBtn = row1.createEl("button", {
-			cls: "clickable-icon extra-setting-button",
-			attr: { type: "button", "aria-label": "Remove custom marker", "data-tooltip-position": "top" },
+			cls: "clickable-icon extra-setting-button mr-settings-delete-btn",
+			attr: { type: "button" },
 		});
 		setIcon(deleteBtn, "x");
 		this.plugin.registerDomEvent(deleteBtn, "click", () => {
@@ -289,8 +289,8 @@ export class MarkerEditor {
 		});
 
 		const cancelBtn = row1.createEl("button", {
-			cls: "clickable-icon extra-setting-button",
-			attr: { type: "button", "aria-label": "Cancel new marker", "data-tooltip-position": "top" },
+			cls: "clickable-icon extra-setting-button mr-settings-delete-btn",
+			attr: { type: "button" },
 		});
 		setIcon(cancelBtn, "x");
 		this.plugin.registerDomEvent(cancelBtn, "click", () => {

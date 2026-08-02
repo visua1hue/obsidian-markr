@@ -408,6 +408,12 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 	color: var(--text-warning);
 }
 
+/* Delete button hover only — same vars as Obsidian's own button.mod-destructive. */
+body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .extra-setting-button.mr-settings-delete-btn:hover {
+	color: var(--text-error);
+	background-color: color-mix(in oklch, var(--background-modifier-error) 10%, transparent);
+}
+
 .setting-item.mr-settings-marker-row .setting-item-name {
 	display: flex;
 	align-items: center;
@@ -623,6 +629,11 @@ input.mr-settings-input--color::-moz-color-swatch {
 	box-sizing: border-box;
 	margin-left: 0.4rem;
 	transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+/* Matches .mr-settings-color-wrap's hover treatment. */
+.mr-settings-icon-btn:hover:not(:disabled) {
+	border-color: var(--background-modifier-border-hover);
 }
 
 /* `button:not(.clickable-icon)` in app.css beats a bare class on specificity;
