@@ -180,7 +180,7 @@ export class MarkrSettingTab extends PluginSettingTab {
 		const restoreScrollTop = this.getScrollContainer()?.scrollTop ?? null;
 		this.update();
 		if (restoreScrollTop !== null) {
-			requestAnimationFrame(() => {
+			window.requestAnimationFrame(() => {
 				const scroller = this.getScrollContainer();
 				if (scroller) scroller.scrollTop = restoreScrollTop;
 			});

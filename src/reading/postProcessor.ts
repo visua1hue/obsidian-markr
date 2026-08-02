@@ -148,7 +148,7 @@ function stripTrigger(
 /* ------------------------------------------------------------------------ */
 
 function buildBadge(match: MatchResult, settings: PluginSettings): HTMLElement {
-	const badge = document.createElement("span");
+	const badge = createSpan();
 	badge.className = `mr-badge mr-badge-rv mr-badge-${match.def.id} mr-colorized`;
 	const badgeBg =
 		match.def.badgeBg ??
@@ -182,7 +182,7 @@ function buildBadge(match: MatchResult, settings: PluginSettings): HTMLElement {
    (<li>) and loose (lead <p>) lists rendering with identical spacing and matches
    Live Preview; never give this element a vertical box. See styles.css. */
 function buildRow(target: RowTarget, match: MatchResult): HTMLElement {
-	const row = document.createElement("span");
+	const row = createSpan();
 	row.className = `mr-rv-row mr-rv-row--${target.kind} mr-rv-enter mr-line-${match.def.id} mr-colorized`;
 	row.setCssProps(markerCssVars(match.def.color));
 
