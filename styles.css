@@ -625,6 +625,11 @@ input.mr-settings-input--color::-moz-color-swatch {
 	transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
 }
 
+/* Matches .mr-settings-color-wrap's hover treatment. */
+.mr-settings-icon-btn:hover:not(:disabled) {
+	border-color: var(--background-modifier-border-hover);
+}
+
 /* `button:not(.clickable-icon)` in app.css beats a bare class on specificity;
    qualifying with the element type / doubling the class wins both below. */
 button.mr-settings-icon-btn {
