@@ -138,27 +138,42 @@ function findPriorityDef(
 	return null;
 }
 
+/**
+ * `registered` maps each registered command id to the label in its name.
+ * Every addCommand leaves a cleanup entry on the plugin until unload, so only
+ * markers that were added, removed, or renamed touch the command list.
+ */
 export function syncCustomMarkerCommands(
 	plugin: Plugin,
 	getSettings: () => PluginSettings,
-	registeredIds: Set<string>,
+	registered: Map<string, string>,
 ): void {
-	for (const id of registeredIds) {
-		plugin.removeCommand(id);
-	}
-	registeredIds.clear();
-
+	const wanted = new Map<string, MarkerDef>();
 	for (const marker of getSettings().markers) {
-		if (marker.kind !== "custom") continue;
-		const id = `apply-custom-${marker.id}`;
+		if (marker.kind === "custom") {
+			wanted.set(`apply-custom-${marker.id}`, marker);
+		}
+	}
+
+	for (const [id, label] of registered) {
+		if (wanted.get(id)?.label === label) continue;
+		plugin.removeCommand(id);
+		registered.delete(id);
+	}
+
+	for (const [id, marker] of wanted) {
+		if (registered.has(id)) continue;
+		const markerId = marker.id;
 		plugin.addCommand({
 			id,
 			name: `Apply "${marker.label}" marker`,
 			editorCallback: (editor) => {
-				applyMarker(editor, marker, getSettings);
+				// Look up at call time: a trigger edit keeps the command.
+				const current = getSettings().markers.find((m) => m.id === markerId);
+				if (current) applyMarker(editor, current, getSettings);
 			},
 		});
-		registeredIds.add(id);
+		registered.set(id, marker.label);
 	}
 }
 
