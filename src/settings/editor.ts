@@ -21,6 +21,7 @@ interface DomEventRegistrar {
 import type MarkrPlugin from "../main";
 import { markerCssVars } from "../theme/cssVars";
 import {
+	MAX_TRIGGER_LENGTH,
 	makeTrigger,
 	type MarkerColor,
 	type MarkerDef,
@@ -78,6 +79,12 @@ export function customMarkers(
 	return markers.filter(
 		(m): m is Extract<MarkerDef, { kind: "custom" }> => m.kind === "custom",
 	);
+}
+
+/** Settings chips are a fixed square, so a long custom trigger shows its first
+ *  character there; the full trigger is in the input beside it. */
+function chipText(trigger: string): string {
+	return Array.from(trigger)[0] ?? "";
 }
 
 // ── Animation helper ───────────────────────────────────────────────────────
@@ -338,7 +345,7 @@ export class MarkerEditor {
 					el.removeClass("mr-settings-creator-badge");
 					el.addClass("mr-colorized");
 					el.setCssProps(colorVars());
-					this.applyBadgeContent(el, draft.icon, draft.trigger || "·");
+					this.applyBadgeContent(el, draft.icon, chipText(draft.trigger) || "·");
 				}
 			}
 
@@ -370,7 +377,7 @@ export class MarkerEditor {
 				type: "text",
 				placeholder: "!",
 				"aria-label": "Trigger",
-				maxlength: "3",
+				maxlength: String(MAX_TRIGGER_LENGTH),
 			},
 		});
 		triggerInput.value = draft.trigger;

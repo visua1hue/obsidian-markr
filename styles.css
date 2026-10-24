@@ -264,9 +264,10 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 	}
 }
 
-/* Trigger badge — a padded chip. Sized to its content (so `!` / `!!` / `!!!`
-   and icons each get their own width). Shared by the always-on priority mark
-   and the icon replace-widget. */
+/* Trigger badge — a padded chip. Shared by the always-on text mark and the icon
+   replace-widget. Custom text badges grow to fit their trigger; priority and
+   icon badges keep one fixed width (below) so `!` / `!!` / `!!!` and icons
+   line up. */
 .mr-badge {
 	background: var(--mr-badge-bg, transparent);
 	color: var(--mr-marker-fg, inherit);
@@ -277,7 +278,6 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 	justify-content: center;
 	padding: 0.05em 0.15em;
 	min-width: 1.2em;
-	max-width: 1.2em;
 	height: 1.2em;
 
 	font-weight: 600;
@@ -295,6 +295,13 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 .mr-badge-rv {
 	margin-inline-end: 0.3em;
 	margin-inline-start: 0.3em;
+}
+
+.mr-badge-p1,
+.mr-badge-p2,
+.mr-badge-p3,
+.mr-badge.mr-badge-icon {
+	max-width: 1.2em;
 }
 
 .mr-badge-p1 {
@@ -430,6 +437,8 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 
 /* ── Marker badge in settings ────────────────────────────────────────────── */
 
+/* Fixed square in every row so the inputs line up as columns; long custom
+   triggers show their first character here (chipText in editor.ts). */
 .mr-badge--settings {
 	inline-size: var(--mr-settings-preview-size);
 	block-size: var(--mr-settings-preview-size);
@@ -526,8 +535,8 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 }
 
 .mr-settings-input--trigger {
-	width: 4.25rem;
-	flex: 0 0 4.25rem;
+	width: 7.5rem;
+	flex: 0 0 7.5rem;
 }
 
 .mr-settings-input--label {
@@ -790,9 +799,11 @@ body.is-phone[data-markr] .setting-item.mr-settings-marker-row {
 }
 
 /* row1 is otherwise shrink-to-fit, leaving no room for margin-left: auto
-   to push the button into — force it full-width. */
+   to push the button into — force it full-width. min-width: 0 lets the label
+   input shrink when a wide badge or trigger would push the row past the card. */
 .is-phone .mr-settings-row1 {
 	flex: 1 1 100%;
+	min-width: 0;
 }
 
 /* Matches the row's right inset (lock/delete button) so the badge and the
@@ -829,8 +840,8 @@ body.is-phone[data-markr] .setting-item.mr-settings-marker-row {
 
 /* Obsidian phone CSS forces width:100% on text inputs — clamp ours */
 .is-phone .mr-settings-input--trigger {
-	width: 4.25rem !important;
-	flex: 0 0 4.25rem;
+	width: 7.5rem !important;
+	flex: 0 0 7.5rem;
 }
 
 /* Obsidian sets --input-height:44px + 16px side padding on mobile — reduce for compact rows */
