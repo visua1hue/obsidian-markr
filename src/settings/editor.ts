@@ -9,15 +9,6 @@ import {
 	setIcon,
 } from "obsidian";
 
-/** Minimal interface for Obsidian's Component.registerDomEvent. */
-interface DomEventRegistrar {
-	registerDomEvent<K extends keyof HTMLElementEventMap>(
-		el: HTMLElement,
-		type: K,
-		callback: (this: HTMLElement, ev: HTMLElementEventMap[K]) => unknown,
-		options?: boolean | AddEventListenerOptions,
-	): void;
-}
 import type MarkrPlugin from "../main";
 import { markerCssVars } from "../theme/cssVars";
 import {
@@ -93,7 +84,6 @@ function animateOut(
 	el: HTMLElement,
 	cls: string,
 	onDone: () => void,
-	component: DomEventRegistrar,
 ): void {
 	el.addClass(cls);
 	let done = false;
@@ -102,7 +92,7 @@ function animateOut(
 		done = true;
 		onDone();
 	};
-	component.registerDomEvent(el, "animationend", finish, { once: true });
+	el.addEventListener("animationend", finish, { once: true });
 	window.setTimeout(finish, 160);
 }
 
@@ -149,6 +139,9 @@ class IconPickerModal extends FuzzySuggestModal<string> {
 
 // ── MarkerEditor ───────────────────────────────────────────────────────────
 
+// Rows are rebuilt on every settings render, so their listeners attach to the
+// row elements and are collected with them. plugin.registerDomEvent would pin
+// every discarded row in memory until the plugin unloads.
 export class MarkerEditor {
 	private creatorOpen = false;
 	private creatorDraft: CustomMarkerDraft = { ...DEFAULT_DRAFT };
@@ -249,7 +242,7 @@ export class MarkerEditor {
 			attr: { type: "button" },
 		});
 		setIcon(deleteBtn, "x");
-		this.plugin.registerDomEvent(deleteBtn, "click", () => {
+		deleteBtn.addEventListener("click", () => {
 			const removed = this.plugin.updateSettings(
 				(settings: PluginSettings) => ({
 					...settings,
@@ -266,7 +259,6 @@ export class MarkerEditor {
 					// deferred until after the fade so it doesn't cut the animation short.
 					void removed.then(() => this.redisplay());
 				},
-				this.plugin,
 			);
 		});
 
@@ -300,7 +292,7 @@ export class MarkerEditor {
 			attr: { type: "button" },
 		});
 		setIcon(cancelBtn, "x");
-		this.plugin.registerDomEvent(cancelBtn, "click", () => {
+		cancelBtn.addEventListener("click", () => {
 			this.cancelCreatorInPlace(setting.settingEl);
 		});
 
@@ -384,11 +376,11 @@ export class MarkerEditor {
 		if (opts.disabled) {
 			triggerInput.disabled = true;
 		} else {
-			this.plugin.registerDomEvent(triggerInput, "input", () => {
+			triggerInput.addEventListener("input", () => {
 				draft.trigger = triggerInput.value;
 				updatePreview();
 			});
-			this.plugin.registerDomEvent(triggerInput, "blur", opts.onBlur);
+			triggerInput.addEventListener("blur", opts.onBlur);
 		}
 
 		const labelInput = row1.createEl("input", {
@@ -399,10 +391,10 @@ export class MarkerEditor {
 		if (opts.disabled) {
 			labelInput.disabled = true;
 		} else {
-			this.plugin.registerDomEvent(labelInput, "input", () => {
+			labelInput.addEventListener("input", () => {
 				draft.label = labelInput.value;
 			});
-			this.plugin.registerDomEvent(labelInput, "blur", opts.onBlur);
+			labelInput.addEventListener("blur", opts.onBlur);
 		}
 
 		if (opts.autofocus) {
@@ -418,7 +410,7 @@ export class MarkerEditor {
 		if (opts.disabled) {
 			iconBtn.disabled = true;
 		} else {
-			this.plugin.registerDomEvent(iconBtn, "click", () => {
+			iconBtn.addEventListener("click", () => {
 				new IconPickerModal(this.app, (icon) => {
 					draft.icon = icon;
 					this.updateIconButton(iconBtn, icon);
@@ -448,11 +440,11 @@ export class MarkerEditor {
 				input.disabled = true;
 				wrap.addClass("is-disabled");
 			} else {
-				this.plugin.registerDomEvent(input, "input", () => {
+				input.addEventListener("input", () => {
 					draft[key] = input.value;
 					updatePreview();
 				});
-				this.plugin.registerDomEvent(input, "blur", opts.onBlur);
+				input.addEventListener("blur", opts.onBlur);
 			}
 		}
 
@@ -474,12 +466,12 @@ export class MarkerEditor {
 			badgeBgInput.disabled = true;
 			badgeBgWrap.addClass("is-disabled");
 		} else {
-			this.plugin.registerDomEvent(badgeBgInput, "input", () => {
+			badgeBgInput.addEventListener("input", () => {
 				draft.badgeBg = badgeBgInput.value;
 				badgeBgWrap.removeClass("mr-settings-color-wrap--unset");
 				updatePreview();
 			});
-			this.plugin.registerDomEvent(badgeBgInput, "blur", opts.onBlur);
+			badgeBgInput.addEventListener("blur", opts.onBlur);
 		}
 
 		// Initialise preview state on first render
@@ -544,7 +536,6 @@ export class MarkerEditor {
 				// deferred until after the fade so it doesn't cut it short.
 				this.redisplay();
 			},
-			this.plugin,
 		);
 	}
 
