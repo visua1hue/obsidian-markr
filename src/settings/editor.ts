@@ -85,6 +85,10 @@ function animateOut(
 	cls: string,
 	onDone: () => void,
 ): void {
+	// height: auto can't transition, so pin the measured height first; the
+	// second read commits it before the class starts the collapse.
+	el.setCssProps({ height: `${el.offsetHeight}px` });
+	void el.offsetHeight;
 	el.addClass(cls);
 	let done = false;
 	const finish = () => {
@@ -92,7 +96,9 @@ function animateOut(
 		done = true;
 		onDone();
 	};
-	el.addEventListener("animationend", finish, { once: true });
+	el.addEventListener("transitionend", (e) => {
+		if (e.propertyName === "opacity") finish();
+	});
 	window.setTimeout(finish, 160);
 }
 

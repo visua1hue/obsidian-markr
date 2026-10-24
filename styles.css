@@ -24,6 +24,12 @@
 	--mr-settings-icon-size: 24px;
 	--mr-settings-group-gap: 0.4rem; /* icon-picker → color-swatch group */
 	--mr-settings-base-gap: 0.5rem; /* trigger↔label, swatch↔swatch */
+
+	/* Motion. Settings UI only — notes never animate. */
+	--mr-dur-fast: 120ms;
+	--mr-dur-base: 160ms;
+	--mr-ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+	--mr-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 body.theme-light[data-markr] .mr-colorized {
@@ -363,10 +369,6 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 	background: var(--background-secondary) !important;
 	box-shadow: 0 1px 0
 		color-mix(in srgb, var(--background-primary) 65%, transparent);
-	transition:
-		border-color 120ms ease,
-		background-color 120ms ease,
-		box-shadow 120ms ease;
 }
 
 /* Kills Obsidian's connected-card ::before divider — misaligned without our border. */
@@ -407,7 +409,7 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 	width: 26px;
 	padding-inline: 0;
 	color: var(--text-faint);
-	transition: color 120ms ease;
+	transition: color var(--mr-dur-fast) var(--mr-ease-standard);
 }
 
 /* No background-color hover rule exists here or on the "+" button (checked) —
@@ -468,47 +470,45 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 	background: transparent;
 }
 
-.setting-item.mr-settings-marker-row--removing {
-	animation: mr-row-remove 150ms ease-in forwards !important;
+/* Row removal. Transitions, not keyframes: the row's margin and padding are
+   !important, which keyframes can't override but transitions can. animateOut()
+   pins the measured height inline so the collapse has a start value. */
+.setting-item.mr-settings-marker-row.mr-settings-marker-row--removing {
+	opacity: 0;
 	overflow: hidden;
 	pointer-events: none;
+	transition: opacity var(--mr-dur-fast) var(--mr-ease-out);
 }
 
-@keyframes mr-row-remove {
-	0% {
-		opacity: 1;
-		max-height: 300px;
-		margin-top: 0.6rem;
-		margin-bottom: 0.6rem;
-	}
-	35% {
-		opacity: 0;
-	}
-	100% {
-		opacity: 0;
-		max-height: 0;
-		margin-top: 0;
-		margin-bottom: 0;
-		padding-top: 0;
-		padding-bottom: 0;
-		border-width: 0;
-		box-shadow: none;
-	}
-}
-
-/* Creator ghost row slides in from above */
+/* Creator row enters from above; the fade alone under reduced motion. */
 .setting-item.mr-settings-marker-row--creator {
-	animation: mr-row-in 160ms cubic-bezier(0.34, 1.4, 0.64, 1);
+	animation: mr-row-in var(--mr-dur-base) var(--mr-ease-out);
 }
 
 @keyframes mr-row-in {
 	from {
 		opacity: 0;
-		transform: translateY(-8px) scale(0.98);
 	}
-	to {
-		opacity: 1;
-		transform: translateY(0) scale(1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.setting-item.mr-settings-marker-row.mr-settings-marker-row--removing {
+		height: 0 !important;
+		min-height: 0 !important;
+		margin-block: 0 !important;
+		padding-block: 0 !important;
+		transition-property: opacity, height, margin, padding;
+	}
+
+	.setting-item.mr-settings-marker-row--creator {
+		animation-name: mr-row-in-from-above;
+	}
+
+	@keyframes mr-row-in-from-above {
+		from {
+			opacity: 0;
+			transform: translateY(-10px);
+		}
 	}
 }
 
@@ -562,7 +562,7 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 	/* outline sits outside overflow-hidden so it is never clipped */
 	outline: 1.5px solid var(--background-modifier-border);
 	outline-offset: 1.5px;
-	transition: outline-color 120ms ease;
+	transition: outline-color var(--mr-dur-fast) var(--mr-ease-standard);
 }
 
 .mr-settings-color-wrap--unset::after {
@@ -638,7 +638,9 @@ input.mr-settings-input--color::-moz-color-swatch {
 	cursor: pointer;
 	box-sizing: border-box;
 	margin-left: 0.4rem;
-	transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+	transition-property: border-color, background-color, color;
+	transition-duration: var(--mr-dur-fast);
+	transition-timing-function: var(--mr-ease-standard);
 }
 
 /* Matches .mr-settings-color-wrap's hover treatment. */
