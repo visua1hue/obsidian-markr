@@ -1,6 +1,7 @@
 import {
 	App,
 	ExtraButtonComponent,
+	Notice,
 	PluginSettingTab,
 	Setting,
 	type SettingDefinitionItem,
@@ -13,6 +14,14 @@ import {
 	priorityMarkers,
 } from "./editor";
 import type { PluginSettings } from "./types";
+
+const MARKERS_GROUP_CLS = "mr-markers-group";
+
+/** App#setting is undocumented; core and many plugins use it to open a tab. */
+interface SettingModal {
+	open(): void;
+	openTabById(id: string): unknown;
+}
 
 export class MarkrSettingTab extends PluginSettingTab {
 	plugin: MarkrPlugin;
@@ -31,6 +40,33 @@ export class MarkrSettingTab extends PluginSettingTab {
 
 	override hide(): void {
 		this.editor.closeCreator();
+	}
+
+	/** Opens this tab with the marker group scrolled to the top. */
+	openAtMarkers(): void {
+		const setting = (this.app as unknown as { setting?: Partial<SettingModal> })
+			.setting;
+		if (
+			typeof setting?.open !== "function" ||
+			typeof setting.openTabById !== "function"
+		) {
+			new Notice("Open the plugin settings to edit markers.");
+			return;
+		}
+		setting.open();
+		setting.openTabById(this.plugin.manifest.id);
+		window.requestAnimationFrame(() => {
+			const group = this.containerEl.querySelector(`.${MARKERS_GROUP_CLS}`);
+			const scroller = this.getScrollContainer();
+			if (!group || !scroller) return;
+			// Line the group up where content starts at scrollTop 0. On phones
+			// that top padding clears Obsidian's floating header, which
+			// scrollIntoView would tuck the heading under.
+			const contentTop =
+				scroller.getBoundingClientRect().top +
+				parseFloat(getComputedStyle(scroller).paddingTop);
+			scroller.scrollTop += group.getBoundingClientRect().top - contentTop;
+		});
 	}
 
 	// Bridge for declarative `control` definitions: PluginSettings is nested +
@@ -124,6 +160,7 @@ export class MarkrSettingTab extends PluginSettingTab {
 			{
 				type: "group",
 				heading: "Personalize Markers",
+				cls: MARKERS_GROUP_CLS,
 				extraButtons: [
 					(button: ExtraButtonComponent) => {
 						button.setIcon("plus").setTooltip("Add custom marker");

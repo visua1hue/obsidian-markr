@@ -51,9 +51,15 @@ export default class MarkrPlugin extends Plugin {
 		this.registerMarkdownPostProcessor(
 			buildPostProcessor(() => this.settings),
 		);
-		this.addSettingTab(new MarkrSettingTab(this.app, this));
+		const settingTab = new MarkrSettingTab(this.app, this);
+		this.addSettingTab(settingTab);
 
 		registerCommands(this, () => this.settings);
+		this.addCommand({
+			id: "open-settings",
+			name: "Open settings",
+			callback: () => settingTab.openAtMarkers(),
+		});
 		syncCustomMarkerCommands(this, () => this.settings, this.customCommands);
 	}
 
