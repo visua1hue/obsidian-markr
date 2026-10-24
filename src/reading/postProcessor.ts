@@ -23,10 +23,17 @@ interface RowTarget {
 }
 
 export function buildPostProcessor(getSettings: () => PluginSettings) {
+	// Obsidian calls the post-processor once per rendered section; build the
+	// trie once per settings object, as the editor extension does.
+	let cache: { settings: PluginSettings; matcher: Matcher } | null = null;
+
 	return (el: HTMLElement): void => {
 		const settings = getSettings();
 		if (!settings.performance.applyInReadingView) return;
-		const matcher = new Matcher(settings);
+		if (cache?.settings !== settings) {
+			cache = { settings, matcher: new Matcher(settings) };
+		}
+		const { matcher } = cache;
 
 		el.querySelectorAll<HTMLLIElement>("li").forEach((li) => {
 			renderRow(li, matcher, settings);
