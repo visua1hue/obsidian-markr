@@ -190,7 +190,7 @@ function buildBadge(match: MatchResult, settings: PluginSettings): HTMLElement {
    Live Preview; never give this element a vertical box. See styles.css. */
 function buildRow(target: RowTarget, match: MatchResult): HTMLElement {
 	const row = createSpan();
-	row.className = `mr-rv-row mr-rv-row--${target.kind} mr-rv-enter mr-line-${match.def.id} mr-colorized`;
+	row.className = `mr-rv-row mr-rv-row--${target.kind} mr-line-${match.def.id} mr-colorized`;
 	row.setCssProps(markerCssVars(match.def.color));
 
 	if (

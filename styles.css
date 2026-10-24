@@ -56,7 +56,6 @@ body.theme-dark[data-markr] .mr-colorized {
 	box-shadow:
 		inset 0 2px 0 var(--background-primary),
 		inset 0 -2px 0 var(--background-primary);
-	transition: background-color 120ms ease-out;
 }
 
 /* Editor line owns its box — CM6 measures it, so vertical margin is safe here
@@ -89,7 +88,6 @@ li.mr-rv-li {
 	box-shadow:
 		inset 0 2px 0 var(--background-primary),
 		inset 0 -2px 0 var(--background-primary);
-	transition: background-color 120ms ease-out;
 }
 
 /* Bullet + task items: zero the Obsidian margin and replace it with equal
@@ -137,7 +135,6 @@ li.mr-rv-li[data-mr-row="numbered"]::before {
 	box-shadow:
 		inset 0 2px 0 var(--background-primary),
 		inset 0 -2px 0 var(--background-primary);
-	transition: background-color 120ms ease-out;
 }
 
 .markdown-rendered ol ol > li.mr-rv-li[data-mr-row="numbered"]::before,
@@ -208,7 +205,6 @@ li[data-mr-row="task"]:not(.mr-rv-li):not(:has(> p))::before {
 	box-shadow:
 		inset 0 2px 0 var(--background-primary),
 		inset 0 -2px 0 var(--background-primary);
-	transition: background-color 120ms ease-out;
 	z-index: -1;
 }
 
@@ -224,7 +220,6 @@ li[data-mr-row="task"]:not(.mr-rv-li) > p:first-of-type {
 	box-shadow:
 		inset 0 2px 0 var(--background-primary),
 		inset 0 -2px 0 var(--background-primary);
-	transition: background-color 120ms ease-out;
 }
 
 li[data-mr-row="task"]:not(.mr-rv-li) .mr-rv-row {
@@ -736,42 +731,6 @@ button.mr-settings-icon-btn {
 .mr-icon-suggestion-preview .svg-icon {
 	width: 1rem;
 	height: 1rem;
-}
-
-/* ── Entrance animations ─────────────────────────────────────────────────── */
-
-/* Badge widget (icon replace-widget) fades+scales in when CM6 inserts it.
-   BadgeWidget.eq() prevents replay on scroll — only fires on genuine appearance.
-   Text marks (.mr-badge without .mr-badge-icon) are excluded: marks are
-   recreated on every viewportChanged and would animate on every scroll. */
-@media (prefers-reduced-motion: no-preference) {
-	.mr-badge.mr-badge-enter {
-		animation: mr-badge-in 120ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
-	}
-
-	@keyframes mr-badge-in {
-		from {
-			opacity: 0;
-			transform: scale(0.8);
-		}
-		to {
-			opacity: 1;
-			transform: scale(1);
-		}
-	}
-
-	/* Reading-view row entrance. Opacity-only by design: the row is
-	   layout-neutral (zero vertical box; the band is an inset box-shadow), so a
-	   transform or height animation would perturb the inherited line metrics and
-	   reintroduce the spacing jump this refactor removed. */
-	.mr-rv-row.mr-rv-enter {
-		animation: mr-rv-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
-	}
-
-	@keyframes mr-rv-in {
-		from { opacity: 0; }
-		to   { opacity: 1; }
-	}
 }
 
 /* ── Phone layout ────────────────────────────────────────────────────────── */
