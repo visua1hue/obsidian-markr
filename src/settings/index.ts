@@ -13,15 +13,10 @@ import {
 	customMarkers,
 	priorityMarkers,
 } from "./editor";
+import { openSettingsTab } from "./internals";
 import type { PluginSettings } from "./types";
 
 const MARKERS_GROUP_CLS = "mr-markers-group";
-
-/** App#setting is undocumented; core and many plugins use it to open a tab. */
-interface SettingModal {
-	open(): void;
-	openTabById(id: string): unknown;
-}
 
 export class MarkrSettingTab extends PluginSettingTab {
 	plugin: MarkrPlugin;
@@ -44,17 +39,10 @@ export class MarkrSettingTab extends PluginSettingTab {
 
 	/** Opens this tab with the marker group scrolled to the top. */
 	openAtMarkers(): void {
-		const setting = (this.app as unknown as { setting?: Partial<SettingModal> })
-			.setting;
-		if (
-			typeof setting?.open !== "function" ||
-			typeof setting.openTabById !== "function"
-		) {
+		if (!openSettingsTab(this.app, this.plugin.manifest.id)) {
 			new Notice("Open the plugin settings to edit markers.");
 			return;
 		}
-		setting.open();
-		setting.openTabById(this.plugin.manifest.id);
 		window.requestAnimationFrame(() => {
 			const group = this.containerEl.querySelector(`.${MARKERS_GROUP_CLS}`);
 			const scroller = this.getScrollContainer();

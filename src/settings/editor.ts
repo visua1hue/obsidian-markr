@@ -3,14 +3,17 @@ import {
 	FuzzyMatch,
 	FuzzySuggestModal,
 	Notice,
+	Platform,
 	Setting,
 	getIcon,
 	getIconIds,
 	setIcon,
 } from "obsidian";
 
+import { customCommandId } from "../commands";
 import type MarkrPlugin from "../main";
 import { markerCssVars } from "../theme/cssVars";
+import { openHotkeysFor, printHotkey } from "./internals";
 import {
 	MAX_TRIGGER_LENGTH,
 	makeTrigger,
@@ -243,6 +246,9 @@ export class MarkerEditor {
 			onBlur: () => { void this.saveOnBlur(marker.id, draft); },
 		});
 
+		// Phones rarely have a keyboard to press a hotkey with.
+		if (!Platform.isPhone) this.buildHotkeyButton(row1, marker);
+
 		const deleteBtn = row1.createEl("button", {
 			cls: "clickable-icon extra-setting-button mr-settings-delete-btn",
 			attr: { type: "button" },
@@ -305,6 +311,40 @@ export class MarkerEditor {
 		this.creatorRefs = { rowEl: setting.settingEl, previewEl: badgeEl };
 
 		return setting;
+	}
+
+	// ── Private: hotkey button ─────────────────────────────────────────────
+
+	/** Opens the Hotkeys tab filtered to this marker's "Apply" command. */
+	private buildHotkeyButton(
+		container: HTMLElement,
+		marker: Extract<MarkerDef, { kind: "custom" }>,
+	): void {
+		const hotkey = printHotkey(
+			this.app,
+			`${this.plugin.manifest.id}:${customCommandId(marker.id)}`,
+		);
+		const tooltip = hotkey ? `Hotkey: ${hotkey}` : "Set hotkey";
+		const btn = container.createEl("button", {
+			cls: "clickable-icon extra-setting-button mr-settings-hotkey-btn",
+			attr: {
+				type: "button",
+				"aria-label": tooltip,
+				"data-tooltip-position": "top",
+			},
+		});
+		btn.toggleClass("is-set", hotkey.length > 0);
+		setIcon(btn, "settings");
+		btn.addEventListener("click", () => {
+			// The row may predate a rename; the command name follows the saved label.
+			const label =
+				customMarkers(this.plugin.settings.markers).find(
+					(m) => m.id === marker.id,
+				)?.label ?? marker.label;
+			if (!openHotkeysFor(this.app, `Apply "${label}" marker`)) {
+				new Notice("Open the hotkey settings to assign one.");
+			}
+		});
 	}
 
 	// ── Private: row inputs ────────────────────────────────────────────────

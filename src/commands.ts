@@ -138,6 +138,11 @@ function findPriorityDef(
 	return null;
 }
 
+/** Command id (without the plugin prefix) for a custom marker. */
+export function customCommandId(markerId: string): string {
+	return `apply-custom-${markerId}`;
+}
+
 /**
  * `registered` maps each registered command id to the label in its name.
  * Every addCommand leaves a cleanup entry on the plugin until unload, so only
@@ -151,7 +156,7 @@ export function syncCustomMarkerCommands(
 	const wanted = new Map<string, MarkerDef>();
 	for (const marker of getSettings().markers) {
 		if (marker.kind === "custom") {
-			wanted.set(`apply-custom-${marker.id}`, marker);
+			wanted.set(customCommandId(marker.id), marker);
 		}
 	}
 

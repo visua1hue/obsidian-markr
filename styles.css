@@ -424,6 +424,20 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 	background-color: color-mix(in oklch, var(--background-modifier-error) 10%, transparent);
 }
 
+/* Hotkey button takes the auto margin; the delete button sits flush beside it. */
+body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .mr-settings-hotkey-btn + .extra-setting-button {
+	margin-left: 0;
+}
+
+body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .extra-setting-button.mr-settings-hotkey-btn:hover {
+	color: var(--text-normal);
+}
+
+/* A hotkey is assigned. */
+body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .extra-setting-button.mr-settings-hotkey-btn.is-set {
+	color: var(--text-accent);
+}
+
 .setting-item.mr-settings-marker-row .setting-item-name {
 	display: flex;
 	align-items: center;
