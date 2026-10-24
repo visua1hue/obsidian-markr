@@ -304,6 +304,12 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 	max-width: 1.2em;
 }
 
+/* Custom text badges: the 0.05em raise above centers a chip against the line,
+   but bare letters read as floating — keep them on the text baseline. */
+.mr-badge:not(.mr-badge-p1, .mr-badge-p2, .mr-badge-p3, .mr-badge-icon, .mr-badge--settings) {
+	vertical-align: baseline;
+}
+
 .mr-badge-p1 {
 	letter-spacing: 0;
 }
