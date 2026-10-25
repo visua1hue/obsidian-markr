@@ -24,6 +24,12 @@
 	--mr-settings-icon-size: 24px;
 	--mr-settings-group-gap: 0.4rem; /* icon-picker → color-swatch group */
 	--mr-settings-base-gap: 0.5rem; /* trigger↔label, swatch↔swatch */
+
+	/* Motion. Settings UI only — notes never animate. */
+	--mr-dur-fast: 120ms;
+	--mr-dur-base: 160ms;
+	--mr-ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
+	--mr-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 body.theme-light[data-markr] .mr-colorized {
@@ -49,14 +55,13 @@ body.theme-dark[data-markr] .mr-colorized {
 .mr-rv-row {
 	background: color-mix(
 		in oklch,
-		var(--mr-marker-bg, transparent) 28%,
+		var(--mr-marker-bg, transparent) var(--mr-tint, 28%),
 		transparent
 	);
 	border-radius: var(--mr-line-radius);
 	box-shadow:
 		inset 0 2px 0 var(--background-primary),
 		inset 0 -2px 0 var(--background-primary);
-	transition: background-color 120ms ease-out;
 }
 
 /* Editor line owns its box — CM6 measures it, so vertical margin is safe here
@@ -83,13 +88,12 @@ body.theme-dark[data-markr] .mr-colorized {
    --mr-band-bg cascades to ::before on numbered items without duplicating
    color-mix(). */
 li.mr-rv-li {
-	--mr-band-bg: color-mix(in oklch, var(--mr-marker-bg, transparent) 28%, transparent);
+	--mr-band-bg: color-mix(in oklch, var(--mr-marker-bg, transparent) var(--mr-tint, 28%), transparent);
 	background: var(--mr-band-bg);
 	border-radius: var(--mr-line-radius);
 	box-shadow:
 		inset 0 2px 0 var(--background-primary),
 		inset 0 -2px 0 var(--background-primary);
-	transition: background-color 120ms ease-out;
 }
 
 /* Bullet + task items: zero the Obsidian margin and replace it with equal
@@ -137,7 +141,6 @@ li.mr-rv-li[data-mr-row="numbered"]::before {
 	box-shadow:
 		inset 0 2px 0 var(--background-primary),
 		inset 0 -2px 0 var(--background-primary);
-	transition: background-color 120ms ease-out;
 }
 
 .markdown-rendered ol ol > li.mr-rv-li[data-mr-row="numbered"]::before,
@@ -203,12 +206,11 @@ li[data-mr-row="task"]:not(.mr-rv-li):not(:has(> p))::before {
 	inset-block-start: 0;
 	inset-inline: 0;
 	height: 1lh;
-	background: color-mix(in oklch, var(--mr-marker-bg, transparent) 28%, transparent);
+	background: color-mix(in oklch, var(--mr-marker-bg, transparent) var(--mr-tint, 28%), transparent);
 	border-radius: var(--mr-line-radius);
 	box-shadow:
 		inset 0 2px 0 var(--background-primary),
 		inset 0 -2px 0 var(--background-primary);
-	transition: background-color 120ms ease-out;
 	z-index: -1;
 }
 
@@ -219,12 +221,11 @@ li[data-mr-row="task"]:not(.mr-rv-li) > p:first-of-type {
 	   there by Obsidian); padding keeps content position unchanged. */
 	margin-inline-start: -3ch;
 	padding-inline-start: 3ch;
-	background: color-mix(in oklch, var(--mr-marker-bg, transparent) 28%, transparent);
+	background: color-mix(in oklch, var(--mr-marker-bg, transparent) var(--mr-tint, 28%), transparent);
 	border-radius: var(--mr-line-radius);
 	box-shadow:
 		inset 0 2px 0 var(--background-primary),
 		inset 0 -2px 0 var(--background-primary);
-	transition: background-color 120ms ease-out;
 }
 
 li[data-mr-row="task"]:not(.mr-rv-li) .mr-rv-row {
@@ -264,9 +265,10 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 	}
 }
 
-/* Trigger badge — a padded chip. Sized to its content (so `!` / `!!` / `!!!`
-   and icons each get their own width). Shared by the always-on priority mark
-   and the icon replace-widget. */
+/* Trigger badge — a padded chip. Shared by the always-on text mark and the icon
+   replace-widget. Custom text badges grow to fit their trigger; priority and
+   icon badges keep one fixed width (below) so `!` / `!!` / `!!!` and icons
+   line up. */
 .mr-badge {
 	background: var(--mr-badge-bg, transparent);
 	color: var(--mr-marker-fg, inherit);
@@ -277,7 +279,6 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 	justify-content: center;
 	padding: 0.05em 0.15em;
 	min-width: 1.2em;
-	max-width: 1.2em;
 	height: 1.2em;
 
 	font-weight: 600;
@@ -297,6 +298,19 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 	margin-inline-start: 0.3em;
 }
 
+.mr-badge-p1,
+.mr-badge-p2,
+.mr-badge-p3,
+.mr-badge.mr-badge-icon {
+	max-width: 1.2em;
+}
+
+/* Custom text badges: the 0.05em raise above centers a chip against the line,
+   but bare letters read as floating — keep them on the text baseline. */
+.mr-badge:not(.mr-badge-p1, .mr-badge-p2, .mr-badge-p3, .mr-badge-icon, .mr-badge--settings) {
+	vertical-align: baseline;
+}
+
 .mr-badge-p1 {
 	letter-spacing: 0;
 }
@@ -314,6 +328,31 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
    icon state and the cursor-revealed mark state line up. */
 .mr-badge.mr-badge-icon {
 	vertical-align: -0.14em;
+}
+
+/* Priority marks drawn as SVG (theme/priorityGlyph.ts), filled with the badge
+   color. The chip box is unchanged; only the glyphs are drawn. */
+/* An SVG-only chip has no text baseline, so the 0.05em raise would lift it off
+   the position the text chip had; sitting on the baseline matches it. */
+.mr-badge.mr-badge-drawn {
+	vertical-align: baseline;
+}
+
+.mr-badge.mr-badge-drawn > svg {
+	width: 0.8em;
+	height: 0.8em;
+	fill: currentColor;
+	flex-shrink: 0;
+	display: block;
+}
+
+/* Line tint escalates with priority; custom markers keep the 28% default. */
+.mr-line-p1 {
+	--mr-tint: 16%;
+}
+
+.mr-line-p3 {
+	--mr-tint: 42%;
 }
 
 .mr-badge.mr-badge-icon > svg,
@@ -355,10 +394,6 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 	background: var(--background-secondary) !important;
 	box-shadow: 0 1px 0
 		color-mix(in srgb, var(--background-primary) 65%, transparent);
-	transition:
-		border-color 120ms ease,
-		background-color 120ms ease,
-		box-shadow 120ms ease;
 }
 
 /* Kills Obsidian's connected-card ::before divider — misaligned without our border. */
@@ -369,7 +404,7 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 .setting-item.mr-settings-marker-row.mr-colorized {
 	background: color-mix(
 		in oklch,
-		var(--mr-marker-bg, transparent) 28%,
+		var(--mr-marker-bg, transparent) var(--mr-tint, 28%),
 		transparent
 	) !important;
 	border-color: color-mix(
@@ -399,7 +434,7 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 	width: 26px;
 	padding-inline: 0;
 	color: var(--text-faint);
-	transition: color 120ms ease;
+	transition: color var(--mr-dur-fast) var(--mr-ease-standard);
 }
 
 /* No background-color hover rule exists here or on the "+" button (checked) —
@@ -412,6 +447,27 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .extra-setting-button.mr-settings-delete-btn:hover {
 	color: var(--text-error);
 	background-color: color-mix(in oklch, var(--background-modifier-error) 10%, transparent);
+}
+
+/* Last button (delete or lock) centers under the group heading's "+" — the row's
+   end padding alone leaves it 3.6px right. Phone has its own inset below. */
+.mr-settings-row1 > .mr-settings-delete-btn,
+.mr-settings-row1 > .mr-settings-lock-icon {
+	margin-right: 3.6px;
+}
+
+/* Hotkey button takes the auto margin; the delete button sits flush beside it. */
+body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .mr-settings-hotkey-btn + .extra-setting-button {
+	margin-left: 0;
+}
+
+body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .extra-setting-button.mr-settings-hotkey-btn:hover {
+	color: var(--text-normal);
+}
+
+/* A hotkey is assigned. */
+body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .extra-setting-button.mr-settings-hotkey-btn.is-set {
+	color: var(--text-accent);
 }
 
 .setting-item.mr-settings-marker-row .setting-item-name {
@@ -430,6 +486,8 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 
 /* ── Marker badge in settings ────────────────────────────────────────────── */
 
+/* Fixed square in every row so the inputs line up as columns; long custom
+   triggers show their first character here (chipText in editor.ts). */
 .mr-badge--settings {
 	inline-size: var(--mr-settings-preview-size);
 	block-size: var(--mr-settings-preview-size);
@@ -453,52 +511,56 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 	stroke-width: var(--icon-s-stroke-width);
 }
 
+/* Drawn priority marks fill the settings chip in the same proportion as in notes. */
+.mr-badge--settings.mr-badge-drawn > svg {
+	width: calc(var(--mr-settings-preview-size) * 0.67);
+	height: calc(var(--mr-settings-preview-size) * 0.67);
+}
+
 /* Placeholder badge for the creator ghost row */
 .mr-settings-creator-badge {
 	background: transparent;
 }
 
-.setting-item.mr-settings-marker-row--removing {
-	animation: mr-row-remove 150ms ease-in forwards !important;
+/* Row removal. Transitions, not keyframes: the row's margin and padding are
+   !important, which keyframes can't override but transitions can. animateOut()
+   pins the measured height inline so the collapse has a start value. */
+.setting-item.mr-settings-marker-row.mr-settings-marker-row--removing {
+	opacity: 0;
 	overflow: hidden;
 	pointer-events: none;
+	transition: opacity var(--mr-dur-fast) var(--mr-ease-out);
 }
 
-@keyframes mr-row-remove {
-	0% {
-		opacity: 1;
-		max-height: 300px;
-		margin-top: 0.6rem;
-		margin-bottom: 0.6rem;
-	}
-	35% {
-		opacity: 0;
-	}
-	100% {
-		opacity: 0;
-		max-height: 0;
-		margin-top: 0;
-		margin-bottom: 0;
-		padding-top: 0;
-		padding-bottom: 0;
-		border-width: 0;
-		box-shadow: none;
-	}
-}
-
-/* Creator ghost row slides in from above */
+/* Creator row enters from above; the fade alone under reduced motion. */
 .setting-item.mr-settings-marker-row--creator {
-	animation: mr-row-in 160ms cubic-bezier(0.34, 1.4, 0.64, 1);
+	animation: mr-row-in var(--mr-dur-base) var(--mr-ease-out);
 }
 
 @keyframes mr-row-in {
 	from {
 		opacity: 0;
-		transform: translateY(-8px) scale(0.98);
 	}
-	to {
-		opacity: 1;
-		transform: translateY(0) scale(1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	.setting-item.mr-settings-marker-row.mr-settings-marker-row--removing {
+		height: 0 !important;
+		min-height: 0 !important;
+		margin-block: 0 !important;
+		padding-block: 0 !important;
+		transition-property: opacity, height, margin, padding;
+	}
+
+	.setting-item.mr-settings-marker-row--creator {
+		animation-name: mr-row-in-from-above;
+	}
+
+	@keyframes mr-row-in-from-above {
+		from {
+			opacity: 0;
+			transform: translateY(-10px);
+		}
 	}
 }
 
@@ -526,8 +588,8 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 }
 
 .mr-settings-input--trigger {
-	width: 4.25rem;
-	flex: 0 0 4.25rem;
+	width: 7.5rem;
+	flex: 0 0 7.5rem;
 }
 
 .mr-settings-input--label {
@@ -552,7 +614,7 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 	/* outline sits outside overflow-hidden so it is never clipped */
 	outline: 1.5px solid var(--background-modifier-border);
 	outline-offset: 1.5px;
-	transition: outline-color 120ms ease;
+	transition: outline-color var(--mr-dur-fast) var(--mr-ease-standard);
 }
 
 .mr-settings-color-wrap--unset::after {
@@ -628,7 +690,9 @@ input.mr-settings-input--color::-moz-color-swatch {
 	cursor: pointer;
 	box-sizing: border-box;
 	margin-left: 0.4rem;
-	transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+	transition-property: border-color, background-color, color;
+	transition-duration: var(--mr-dur-fast);
+	transition-timing-function: var(--mr-ease-standard);
 }
 
 /* Matches .mr-settings-color-wrap's hover treatment. */
@@ -723,42 +787,6 @@ button.mr-settings-icon-btn {
 	height: 1rem;
 }
 
-/* ── Entrance animations ─────────────────────────────────────────────────── */
-
-/* Badge widget (icon replace-widget) fades+scales in when CM6 inserts it.
-   BadgeWidget.eq() prevents replay on scroll — only fires on genuine appearance.
-   Text marks (.mr-badge without .mr-badge-icon) are excluded: marks are
-   recreated on every viewportChanged and would animate on every scroll. */
-@media (prefers-reduced-motion: no-preference) {
-	.mr-badge.mr-badge-enter {
-		animation: mr-badge-in 120ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
-	}
-
-	@keyframes mr-badge-in {
-		from {
-			opacity: 0;
-			transform: scale(0.8);
-		}
-		to {
-			opacity: 1;
-			transform: scale(1);
-		}
-	}
-
-	/* Reading-view row entrance. Opacity-only by design: the row is
-	   layout-neutral (zero vertical box; the band is an inset box-shadow), so a
-	   transform or height animation would perturb the inherited line metrics and
-	   reintroduce the spacing jump this refactor removed. */
-	.mr-rv-row.mr-rv-enter {
-		animation: mr-rv-in 200ms cubic-bezier(0.22, 1, 0.36, 1);
-	}
-
-	@keyframes mr-rv-in {
-		from { opacity: 0; }
-		to   { opacity: 1; }
-	}
-}
-
 /* ── Phone layout ────────────────────────────────────────────────────────── */
 /* .is-phone is set by Obsidian on real devices and dev:mobile emulation.    */
 
@@ -790,9 +818,11 @@ body.is-phone[data-markr] .setting-item.mr-settings-marker-row {
 }
 
 /* row1 is otherwise shrink-to-fit, leaving no room for margin-left: auto
-   to push the button into — force it full-width. */
+   to push the button into — force it full-width. min-width: 0 lets the label
+   input shrink when a wide badge or trigger would push the row past the card. */
 .is-phone .mr-settings-row1 {
 	flex: 1 1 100%;
+	min-width: 0;
 }
 
 /* Matches the row's right inset (lock/delete button) so the badge and the
@@ -829,8 +859,8 @@ body.is-phone[data-markr] .setting-item.mr-settings-marker-row {
 
 /* Obsidian phone CSS forces width:100% on text inputs — clamp ours */
 .is-phone .mr-settings-input--trigger {
-	width: 4.25rem !important;
-	flex: 0 0 4.25rem;
+	width: 7.5rem !important;
+	flex: 0 0 7.5rem;
 }
 
 /* Obsidian sets --input-height:44px + 16px side padding on mobile — reduce for compact rows */

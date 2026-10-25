@@ -18,7 +18,7 @@ function withCurrentPriorityDefaults(markers: readonly MarkerDef[]): MarkerDef[]
 
 export default class MarkrPlugin extends Plugin {
 	settings: PluginSettings = DEFAULT_SETTINGS;
-	private readonly customCommandIds = new Set<string>();
+	private readonly customCommands = new Map<string, string>();
 
 	async onload(): Promise<void> {
 		const loaded = (await this.loadData()) as Partial<PluginSettings> | null;
@@ -51,10 +51,16 @@ export default class MarkrPlugin extends Plugin {
 		this.registerMarkdownPostProcessor(
 			buildPostProcessor(() => this.settings),
 		);
-		this.addSettingTab(new MarkrSettingTab(this.app, this));
+		const settingTab = new MarkrSettingTab(this.app, this);
+		this.addSettingTab(settingTab);
 
 		registerCommands(this, () => this.settings);
-		syncCustomMarkerCommands(this, () => this.settings, this.customCommandIds);
+		this.addCommand({
+			id: "open-settings",
+			name: "Open settings",
+			callback: () => settingTab.openAtMarkers(),
+		});
+		syncCustomMarkerCommands(this, () => this.settings, this.customCommands);
 	}
 
 	onunload(): void {
@@ -70,7 +76,7 @@ export default class MarkrPlugin extends Plugin {
 		this.settings = updater(this.settings);
 		await this.saveData(this.settings);
 		this.app.workspace.updateOptions();
-		syncCustomMarkerCommands(this, () => this.settings, this.customCommandIds);
+		syncCustomMarkerCommands(this, () => this.settings, this.customCommands);
 	}
 
 	async resetSettings(): Promise<void> {

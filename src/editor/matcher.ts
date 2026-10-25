@@ -26,7 +26,10 @@ export class Matcher {
 	private insert(trigger: string, def: MarkerDef): void {
 		let node = this.root;
 		this.firstChars.add(trigger[0]!);
-		for (const ch of trigger) {
+		// Key by UTF-16 code unit, the unit matchAt() walks. for...of yields
+		// code points, which would store "🔥" under a key matchAt never builds.
+		for (let i = 0; i < trigger.length; i++) {
+			const ch = trigger[i]!;
 			let next = node.children.get(ch);
 			if (!next) {
 				next = { children: new Map() };

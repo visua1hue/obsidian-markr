@@ -1,6 +1,7 @@
 import {
 	App,
 	ExtraButtonComponent,
+	Notice,
 	PluginSettingTab,
 	Setting,
 	type SettingDefinitionItem,
@@ -12,7 +13,10 @@ import {
 	customMarkers,
 	priorityMarkers,
 } from "./editor";
+import { openSettingsTab } from "./internals";
 import type { PluginSettings } from "./types";
+
+const MARKERS_GROUP_CLS = "mr-markers-group";
 
 export class MarkrSettingTab extends PluginSettingTab {
 	plugin: MarkrPlugin;
@@ -31,6 +35,26 @@ export class MarkrSettingTab extends PluginSettingTab {
 
 	override hide(): void {
 		this.editor.closeCreator();
+	}
+
+	/** Opens this tab with the marker group scrolled to the top. */
+	openAtMarkers(): void {
+		if (!openSettingsTab(this.app, this.plugin.manifest.id)) {
+			new Notice("Open the plugin settings to edit markers.");
+			return;
+		}
+		window.requestAnimationFrame(() => {
+			const group = this.containerEl.querySelector(`.${MARKERS_GROUP_CLS}`);
+			const scroller = this.getScrollContainer();
+			if (!group || !scroller) return;
+			// Line the group up where content starts at scrollTop 0. On phones
+			// that top padding clears Obsidian's floating header, which
+			// scrollIntoView would tuck the heading under.
+			const contentTop =
+				scroller.getBoundingClientRect().top +
+				parseFloat(getComputedStyle(scroller).paddingTop);
+			scroller.scrollTop += group.getBoundingClientRect().top - contentTop;
+		});
 	}
 
 	// Bridge for declarative `control` definitions: PluginSettings is nested +
@@ -124,6 +148,7 @@ export class MarkrSettingTab extends PluginSettingTab {
 			{
 				type: "group",
 				heading: "Personalize Markers",
+				cls: MARKERS_GROUP_CLS,
 				extraButtons: [
 					(button: ExtraButtonComponent) => {
 						button.setIcon("plus").setTooltip("Add custom marker");

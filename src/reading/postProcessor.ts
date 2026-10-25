@@ -2,6 +2,7 @@ import { setIcon } from "obsidian";
 import type { PluginSettings } from "../settings/types";
 import { Matcher, type MatchResult } from "../editor/matcher";
 import { markerCssVars } from "../theme/cssVars";
+import { drawPriorityGlyph } from "../theme/priorityGlyph";
 
 /** Marker set on a processed <li> so a re-run of the post-processor (Obsidian
    may invoke it on the same DOM after a re-render) doesn't strip text twice
@@ -23,10 +24,17 @@ interface RowTarget {
 }
 
 export function buildPostProcessor(getSettings: () => PluginSettings) {
+	// Obsidian calls the post-processor once per rendered section; build the
+	// trie once per settings object, as the editor extension does.
+	let cache: { settings: PluginSettings; matcher: Matcher } | null = null;
+
 	return (el: HTMLElement): void => {
 		const settings = getSettings();
 		if (!settings.performance.applyInReadingView) return;
-		const matcher = new Matcher(settings);
+		if (cache?.settings !== settings) {
+			cache = { settings, matcher: new Matcher(settings) };
+		}
+		const { matcher } = cache;
 
 		el.querySelectorAll<HTMLLIElement>("li").forEach((li) => {
 			renderRow(li, matcher, settings);
@@ -155,7 +163,10 @@ function buildBadge(match: MatchResult, settings: PluginSettings): HTMLElement {
 		(match.def.kind === "priority" ? "var(--mr-marker-bg)" : undefined);
 	badge.setCssProps(markerCssVars(match.def.color, badgeBg));
 
-	if (match.def.icon) {
+	if (match.def.kind === "priority") {
+		badge.classList.add("mr-badge-drawn");
+		badge.appendChild(drawPriorityGlyph(match.def.id));
+	} else if (match.def.icon) {
 		badge.classList.add("mr-badge-icon");
 		setIcon(badge, match.def.icon);
 	} else {
@@ -183,7 +194,7 @@ function buildBadge(match: MatchResult, settings: PluginSettings): HTMLElement {
    Live Preview; never give this element a vertical box. See styles.css. */
 function buildRow(target: RowTarget, match: MatchResult): HTMLElement {
 	const row = createSpan();
-	row.className = `mr-rv-row mr-rv-row--${target.kind} mr-rv-enter mr-line-${match.def.id} mr-colorized`;
+	row.className = `mr-rv-row mr-rv-row--${target.kind} mr-line-${match.def.id} mr-colorized`;
 	row.setCssProps(markerCssVars(match.def.color));
 
 	if (

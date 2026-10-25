@@ -1,8 +1,13 @@
 export type Trigger = string & { readonly __brand: "Trigger" };
 
+/** Counted in UTF-16 code units, the same unit `maxlength` uses. */
+export const MAX_TRIGGER_LENGTH = 32;
+
 export function makeTrigger(s: string): Trigger {
-	if (s.length < 1 || s.length > 3)
-		throw new Error(`Invalid trigger length: "${s}"`);
+	if (s.length < 1 || s.length > MAX_TRIGGER_LENGTH)
+		throw new Error(
+			`Trigger must be 1 to ${MAX_TRIGGER_LENGTH} characters: "${s}"`,
+		);
 	if (/\s/.test(s))
 		throw new Error(`Trigger may not contain whitespace: "${s}"`);
 	return s as Trigger;

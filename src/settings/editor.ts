@@ -3,24 +3,20 @@ import {
 	FuzzyMatch,
 	FuzzySuggestModal,
 	Notice,
+	Platform,
 	Setting,
 	getIcon,
 	getIconIds,
 	setIcon,
 } from "obsidian";
 
-/** Minimal interface for Obsidian's Component.registerDomEvent. */
-interface DomEventRegistrar {
-	registerDomEvent<K extends keyof HTMLElementEventMap>(
-		el: HTMLElement,
-		type: K,
-		callback: (this: HTMLElement, ev: HTMLElementEventMap[K]) => unknown,
-		options?: boolean | AddEventListenerOptions,
-	): void;
-}
+import { customCommandId } from "../commands";
 import type MarkrPlugin from "../main";
 import { markerCssVars } from "../theme/cssVars";
+import { drawPriorityGlyph } from "../theme/priorityGlyph";
+import { openHotkeysFor, printHotkey } from "./internals";
 import {
+	MAX_TRIGGER_LENGTH,
 	makeTrigger,
 	type MarkerColor,
 	type MarkerDef,
@@ -80,14 +76,23 @@ export function customMarkers(
 	);
 }
 
+/** Settings chips are a fixed square, so a long custom trigger shows its first
+ *  character there; the full trigger is in the input beside it. */
+function chipText(trigger: string): string {
+	return Array.from(trigger)[0] ?? "";
+}
+
 // ── Animation helper ───────────────────────────────────────────────────────
 
 function animateOut(
 	el: HTMLElement,
 	cls: string,
 	onDone: () => void,
-	component: DomEventRegistrar,
 ): void {
+	// height: auto can't transition, so pin the measured height first; the
+	// second read commits it before the class starts the collapse.
+	el.setCssProps({ height: `${el.offsetHeight}px` });
+	void el.offsetHeight;
 	el.addClass(cls);
 	let done = false;
 	const finish = () => {
@@ -95,7 +100,9 @@ function animateOut(
 		done = true;
 		onDone();
 	};
-	component.registerDomEvent(el, "animationend", finish, { once: true });
+	el.addEventListener("transitionend", (e) => {
+		if (e.propertyName === "opacity") finish();
+	});
 	window.setTimeout(finish, 160);
 }
 
@@ -142,6 +149,9 @@ class IconPickerModal extends FuzzySuggestModal<string> {
 
 // ── MarkerEditor ───────────────────────────────────────────────────────────
 
+// Rows are rebuilt on every settings render, so their listeners attach to the
+// row elements and are collected with them. plugin.registerDomEvent would pin
+// every discarded row in memory until the plugin unloads.
 export class MarkerEditor {
 	private creatorOpen = false;
 	private creatorDraft: CustomMarkerDraft = { ...DEFAULT_DRAFT };
@@ -189,6 +199,8 @@ export class MarkerEditor {
 		setting.settingEl.addClass(
 			"mr-settings-marker-row",
 			"mr-settings-marker-row--priority",
+			// Same per-level tint as the marked lines in notes (--mr-tint).
+			`mr-line-${marker.id}`,
 		);
 
 		setting.nameEl.empty();
@@ -237,12 +249,15 @@ export class MarkerEditor {
 			onBlur: () => { void this.saveOnBlur(marker.id, draft); },
 		});
 
+		// Phones rarely have a keyboard to press a hotkey with.
+		if (!Platform.isPhone) this.buildHotkeyButton(row1, marker);
+
 		const deleteBtn = row1.createEl("button", {
 			cls: "clickable-icon extra-setting-button mr-settings-delete-btn",
 			attr: { type: "button" },
 		});
 		setIcon(deleteBtn, "x");
-		this.plugin.registerDomEvent(deleteBtn, "click", () => {
+		deleteBtn.addEventListener("click", () => {
 			const removed = this.plugin.updateSettings(
 				(settings: PluginSettings) => ({
 					...settings,
@@ -259,7 +274,6 @@ export class MarkerEditor {
 					// deferred until after the fade so it doesn't cut the animation short.
 					void removed.then(() => this.redisplay());
 				},
-				this.plugin,
 			);
 		});
 
@@ -293,13 +307,47 @@ export class MarkerEditor {
 			attr: { type: "button" },
 		});
 		setIcon(cancelBtn, "x");
-		this.plugin.registerDomEvent(cancelBtn, "click", () => {
+		cancelBtn.addEventListener("click", () => {
 			this.cancelCreatorInPlace(setting.settingEl);
 		});
 
 		this.creatorRefs = { rowEl: setting.settingEl, previewEl: badgeEl };
 
 		return setting;
+	}
+
+	// ── Private: hotkey button ─────────────────────────────────────────────
+
+	/** Opens the Hotkeys tab filtered to this marker's "Apply" command. */
+	private buildHotkeyButton(
+		container: HTMLElement,
+		marker: Extract<MarkerDef, { kind: "custom" }>,
+	): void {
+		const hotkey = printHotkey(
+			this.app,
+			`${this.plugin.manifest.id}:${customCommandId(marker.id)}`,
+		);
+		const tooltip = hotkey ? `Hotkey: ${hotkey}` : "Set hotkey";
+		const btn = container.createEl("button", {
+			cls: "clickable-icon extra-setting-button mr-settings-hotkey-btn",
+			attr: {
+				type: "button",
+				"aria-label": tooltip,
+				"data-tooltip-position": "top",
+			},
+		});
+		btn.toggleClass("is-set", hotkey.length > 0);
+		setIcon(btn, "settings");
+		btn.addEventListener("click", () => {
+			// The row may predate a rename; the command name follows the saved label.
+			const label =
+				customMarkers(this.plugin.settings.markers).find(
+					(m) => m.id === marker.id,
+				)?.label ?? marker.label;
+			if (!openHotkeysFor(this.app, `Apply "${label}" marker`)) {
+				new Notice("Open the hotkey settings to assign one.");
+			}
+		});
 	}
 
 	// ── Private: row inputs ────────────────────────────────────────────────
@@ -338,7 +386,7 @@ export class MarkerEditor {
 					el.removeClass("mr-settings-creator-badge");
 					el.addClass("mr-colorized");
 					el.setCssProps(colorVars());
-					this.applyBadgeContent(el, draft.icon, draft.trigger || "·");
+					this.applyBadgeContent(el, draft.icon, chipText(draft.trigger) || "·");
 				}
 			}
 
@@ -370,18 +418,18 @@ export class MarkerEditor {
 				type: "text",
 				placeholder: "!",
 				"aria-label": "Trigger",
-				maxlength: "3",
+				maxlength: String(MAX_TRIGGER_LENGTH),
 			},
 		});
 		triggerInput.value = draft.trigger;
 		if (opts.disabled) {
 			triggerInput.disabled = true;
 		} else {
-			this.plugin.registerDomEvent(triggerInput, "input", () => {
+			triggerInput.addEventListener("input", () => {
 				draft.trigger = triggerInput.value;
 				updatePreview();
 			});
-			this.plugin.registerDomEvent(triggerInput, "blur", opts.onBlur);
+			triggerInput.addEventListener("blur", opts.onBlur);
 		}
 
 		const labelInput = row1.createEl("input", {
@@ -392,10 +440,10 @@ export class MarkerEditor {
 		if (opts.disabled) {
 			labelInput.disabled = true;
 		} else {
-			this.plugin.registerDomEvent(labelInput, "input", () => {
+			labelInput.addEventListener("input", () => {
 				draft.label = labelInput.value;
 			});
-			this.plugin.registerDomEvent(labelInput, "blur", opts.onBlur);
+			labelInput.addEventListener("blur", opts.onBlur);
 		}
 
 		if (opts.autofocus) {
@@ -411,7 +459,7 @@ export class MarkerEditor {
 		if (opts.disabled) {
 			iconBtn.disabled = true;
 		} else {
-			this.plugin.registerDomEvent(iconBtn, "click", () => {
+			iconBtn.addEventListener("click", () => {
 				new IconPickerModal(this.app, (icon) => {
 					draft.icon = icon;
 					this.updateIconButton(iconBtn, icon);
@@ -441,11 +489,11 @@ export class MarkerEditor {
 				input.disabled = true;
 				wrap.addClass("is-disabled");
 			} else {
-				this.plugin.registerDomEvent(input, "input", () => {
+				input.addEventListener("input", () => {
 					draft[key] = input.value;
 					updatePreview();
 				});
-				this.plugin.registerDomEvent(input, "blur", opts.onBlur);
+				input.addEventListener("blur", opts.onBlur);
 			}
 		}
 
@@ -467,12 +515,12 @@ export class MarkerEditor {
 			badgeBgInput.disabled = true;
 			badgeBgWrap.addClass("is-disabled");
 		} else {
-			this.plugin.registerDomEvent(badgeBgInput, "input", () => {
+			badgeBgInput.addEventListener("input", () => {
 				draft.badgeBg = badgeBgInput.value;
 				badgeBgWrap.removeClass("mr-settings-color-wrap--unset");
 				updatePreview();
 			});
-			this.plugin.registerDomEvent(badgeBgInput, "blur", opts.onBlur);
+			badgeBgInput.addEventListener("blur", opts.onBlur);
 		}
 
 		// Initialise preview state on first render
@@ -500,7 +548,12 @@ export class MarkerEditor {
 		const badgeBg = marker.badgeBg ?? (marker.kind === "priority" ? "var(--mr-marker-bg)" : undefined);
 		badge.setCssProps(markerCssVars(marker.color, badgeBg));
 		badge.setAttribute("aria-hidden", "true");
-		this.applyBadgeContent(badge, marker.icon ?? "", marker.trigger);
+		if (marker.kind === "priority") {
+			badge.addClass("mr-badge-drawn");
+			badge.appendChild(drawPriorityGlyph(marker.id));
+		} else {
+			this.applyBadgeContent(badge, marker.icon ?? "", marker.trigger);
+		}
 		return badge;
 	}
 
@@ -537,7 +590,6 @@ export class MarkerEditor {
 				// deferred until after the fade so it doesn't cut it short.
 				this.redisplay();
 			},
-			this.plugin,
 		);
 	}
 

@@ -5,11 +5,60 @@ import {
 	ViewPlugin,
 	type ViewUpdate,
 } from "@codemirror/view";
-import { RangeSetBuilder } from "@codemirror/state";
-import type { PluginSettings } from "../settings/types";
+import { type EditorState, RangeSetBuilder } from "@codemirror/state";
+import type { MarkerDef, PluginSettings } from "../settings/types";
 import { Matcher, matchListLine } from "./matcher";
-import { BadgeWidget } from "./widgets";
+import { type BadgeContent, BadgeWidget } from "./widgets";
 import { markerCssVars, markerStyleAttr } from "../theme/cssVars";
+
+interface MarkerDecorations {
+	line: Decoration;
+	/** Badge styling over the raw trigger text. */
+	mark: Decoration;
+	/** Replace-widget: drawn priority marks or the marker's icon. */
+	widget: Decoration | null;
+}
+
+function buildMarkerDecorations(
+	def: MarkerDef,
+	showTooltips: boolean,
+): MarkerDecorations {
+	const badgeBg =
+		def.badgeBg ??
+		(def.kind === "priority" ? "var(--mr-marker-bg)" : undefined);
+	const cssVars = markerCssVars(def.color, badgeBg);
+	const style = markerStyleAttr(def.color, badgeBg);
+	const content: BadgeContent | null =
+		def.kind === "priority"
+			? { kind: "priority", id: def.id }
+			: def.icon
+				? { kind: "icon", icon: def.icon }
+				: null;
+
+	return {
+		line: Decoration.line({
+			attributes: { class: `mr-line mr-line-${def.id} mr-colorized`, style },
+		}),
+		mark: Decoration.mark({
+			attributes: { class: `mr-badge mr-badge-${def.id} mr-colorized`, style },
+		}),
+		widget: content
+			? Decoration.replace({
+					widget: new BadgeWidget(
+						def.id,
+						content,
+						def.label,
+						showTooltips,
+						cssVars,
+					),
+				})
+			: null,
+	};
+}
+
+function cursorLineOf(state: EditorState): number {
+	return state.doc.lineAt(state.selection.main.head).number;
+}
 
 export function buildMarkrExtension(getSettings: () => PluginSettings) {
 	return ViewPlugin.fromClass(
@@ -17,6 +66,9 @@ export function buildMarkrExtension(getSettings: () => PluginSettings) {
 			decorations: DecorationSet;
 			matcher: Matcher;
 			settingsRef: PluginSettings;
+			/** Built once per marker per settings object, reused on every line. */
+			markerDecorations = new Map<string, MarkerDecorations>();
+			cursorLine = -1;
 
 			constructor(view: EditorView) {
 				this.settingsRef = getSettings();
@@ -31,17 +83,21 @@ export function buildMarkrExtension(getSettings: () => PluginSettings) {
 				if (settingsChanged) {
 					this.settingsRef = currentSettings;
 					this.matcher = new Matcher(currentSettings);
+					this.markerDecorations.clear();
 				}
 
-				const cursorMatters =
-					currentSettings.behavior.hideMarkerWhenCursorAway;
-				const cursorRelevant = u.selectionSet && cursorMatters;
+				// Only the cursor's line decides icon vs raw trigger, so moves
+				// within a line leave the decorations as they are.
+				const cursorLineChanged =
+					u.selectionSet &&
+					currentSettings.behavior.hideMarkerWhenCursorAway &&
+					cursorLineOf(u.state) !== this.cursorLine;
 
 				if (
 					!settingsChanged &&
 					!u.docChanged &&
 					!u.viewportChanged &&
-					!cursorRelevant
+					!cursorLineChanged
 				) {
 					return;
 				}
@@ -51,15 +107,23 @@ export function buildMarkrExtension(getSettings: () => PluginSettings) {
 
 			destroy(): void {}
 
+			private decorationsFor(def: MarkerDef): MarkerDecorations {
+				let decorations = this.markerDecorations.get(def.id);
+				if (!decorations) {
+					decorations = buildMarkerDecorations(
+						def,
+						this.settingsRef.behavior.showTooltips,
+					);
+					this.markerDecorations.set(def.id, decorations);
+				}
+				return decorations;
+			}
+
 			private build(view: EditorView): DecorationSet {
 				const builder = new RangeSetBuilder<Decoration>();
-				const settings = this.settingsRef;
-
-				const cursorLine = view.state.doc.lineAt(
-					view.state.selection.main.head,
-				).number;
-				const hideOnCursor = settings.behavior.hideMarkerWhenCursorAway;
-				const showTooltips = settings.behavior.showTooltips;
+				const hideOnCursor =
+					this.settingsRef.behavior.hideMarkerWhenCursorAway;
+				this.cursorLine = cursorLineOf(view.state);
 
 				const seenLines = new Set<number>();
 
@@ -78,68 +142,20 @@ export function buildMarkrExtension(getSettings: () => PluginSettings) {
 
 						const match = matchListLine(line.text, this.matcher);
 						if (match) {
-							const { def, offset, trigger } = match;
-							const markerFrom = line.from + offset;
-							const markerTo = markerFrom + trigger.length;
-							const badgeBg =
-							def.badgeBg ??
-							(def.kind === "priority" ? "var(--mr-marker-bg)" : undefined);
-							const cssVars = markerCssVars(def.color, badgeBg);
-							const style = markerStyleAttr(def.color, badgeBg);
+							const decorations = this.decorationsFor(match.def);
+							const markerFrom = line.from + match.offset;
+							const markerTo = markerFrom + match.trigger.length;
+							const showWidget =
+								!hideOnCursor || line.number !== this.cursorLine;
 
+							builder.add(line.from, line.from, decorations.line);
 							builder.add(
-								line.from,
-								line.from,
-								Decoration.line({
-									attributes: {
-										class: `mr-line mr-line-${def.id} mr-colorized`,
-										style,
-									},
-								}),
+								markerFrom,
+								markerTo,
+								decorations.widget && showWidget
+									? decorations.widget
+									: decorations.mark,
 							);
-
-							if (def.icon) {
-								const cursorHere = line.number === cursorLine;
-								const showIcon = !hideOnCursor || !cursorHere;
-
-								if (showIcon) {
-									builder.add(
-										markerFrom,
-										markerTo,
-										Decoration.replace({
-											widget: new BadgeWidget(
-												def.id,
-												def.icon,
-												def.label,
-												showTooltips,
-												cssVars,
-											),
-										}),
-									);
-								} else {
-									builder.add(
-										markerFrom,
-										markerTo,
-										Decoration.mark({
-											attributes: {
-												class: `mr-badge mr-badge-${def.id} mr-colorized`,
-												style,
-											},
-										}),
-									);
-								}
-							} else {
-								builder.add(
-									markerFrom,
-									markerTo,
-									Decoration.mark({
-										attributes: {
-											class: `mr-badge mr-badge-${def.id} mr-colorized`,
-											style,
-										},
-									}),
-								);
-							}
 						}
 
 						pos = line.to + 1;
