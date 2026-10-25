@@ -424,6 +424,13 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 	background-color: color-mix(in oklch, var(--background-modifier-error) 10%, transparent);
 }
 
+/* Last button (delete or lock) centers under the group heading's "+" — the row's
+   end padding alone leaves it 3.6px right. Phone has its own inset below. */
+.mr-settings-row1 > .mr-settings-delete-btn,
+.mr-settings-row1 > .mr-settings-lock-icon {
+	margin-right: 3.6px;
+}
+
 /* Hotkey button takes the auto margin; the delete button sits flush beside it. */
 body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .mr-settings-hotkey-btn + .extra-setting-button {
 	margin-left: 0;
