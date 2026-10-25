@@ -55,7 +55,7 @@ body.theme-dark[data-markr] .mr-colorized {
 .mr-rv-row {
 	background: color-mix(
 		in oklch,
-		var(--mr-marker-bg, transparent) 28%,
+		var(--mr-marker-bg, transparent) var(--mr-tint, 28%),
 		transparent
 	);
 	border-radius: var(--mr-line-radius);
@@ -88,7 +88,7 @@ body.theme-dark[data-markr] .mr-colorized {
    --mr-band-bg cascades to ::before on numbered items without duplicating
    color-mix(). */
 li.mr-rv-li {
-	--mr-band-bg: color-mix(in oklch, var(--mr-marker-bg, transparent) 28%, transparent);
+	--mr-band-bg: color-mix(in oklch, var(--mr-marker-bg, transparent) var(--mr-tint, 28%), transparent);
 	background: var(--mr-band-bg);
 	border-radius: var(--mr-line-radius);
 	box-shadow:
@@ -206,7 +206,7 @@ li[data-mr-row="task"]:not(.mr-rv-li):not(:has(> p))::before {
 	inset-block-start: 0;
 	inset-inline: 0;
 	height: 1lh;
-	background: color-mix(in oklch, var(--mr-marker-bg, transparent) 28%, transparent);
+	background: color-mix(in oklch, var(--mr-marker-bg, transparent) var(--mr-tint, 28%), transparent);
 	border-radius: var(--mr-line-radius);
 	box-shadow:
 		inset 0 2px 0 var(--background-primary),
@@ -221,7 +221,7 @@ li[data-mr-row="task"]:not(.mr-rv-li) > p:first-of-type {
 	   there by Obsidian); padding keeps content position unchanged. */
 	margin-inline-start: -3ch;
 	padding-inline-start: 3ch;
-	background: color-mix(in oklch, var(--mr-marker-bg, transparent) 28%, transparent);
+	background: color-mix(in oklch, var(--mr-marker-bg, transparent) var(--mr-tint, 28%), transparent);
 	border-radius: var(--mr-line-radius);
 	box-shadow:
 		inset 0 2px 0 var(--background-primary),
@@ -330,6 +330,31 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 	vertical-align: -0.14em;
 }
 
+/* Priority marks drawn as SVG (theme/priorityGlyph.ts), filled with the badge
+   color. The chip box is unchanged; only the glyphs are drawn. */
+/* An SVG-only chip has no text baseline, so the 0.05em raise would lift it off
+   the position the text chip had; sitting on the baseline matches it. */
+.mr-badge.mr-badge-drawn {
+	vertical-align: baseline;
+}
+
+.mr-badge.mr-badge-drawn > svg {
+	width: 0.8em;
+	height: 0.8em;
+	fill: currentColor;
+	flex-shrink: 0;
+	display: block;
+}
+
+/* Line tint escalates with priority; custom markers keep the 28% default. */
+.mr-line-p1 {
+	--mr-tint: 16%;
+}
+
+.mr-line-p3 {
+	--mr-tint: 42%;
+}
+
 .mr-badge.mr-badge-icon > svg,
 .mr-badge.mr-badge-icon > .svg-icon {
 	width: 1.1em;
@@ -379,7 +404,7 @@ li[data-mr-row="numbered"]:not(.mr-rv-li) .mr-rv-row {
 .setting-item.mr-settings-marker-row.mr-colorized {
 	background: color-mix(
 		in oklch,
-		var(--mr-marker-bg, transparent) 28%,
+		var(--mr-marker-bg, transparent) var(--mr-tint, 28%),
 		transparent
 	) !important;
 	border-color: color-mix(
@@ -484,6 +509,12 @@ body[data-markr] .setting-item.mr-settings-marker-row .setting-item-control .ext
 	width: calc(var(--mr-settings-preview-size) * 0.78);
 	height: calc(var(--mr-settings-preview-size) * 0.78);
 	stroke-width: var(--icon-s-stroke-width);
+}
+
+/* Drawn priority marks fill the settings chip in the same proportion as in notes. */
+.mr-badge--settings.mr-badge-drawn > svg {
+	width: calc(var(--mr-settings-preview-size) * 0.67);
+	height: calc(var(--mr-settings-preview-size) * 0.67);
 }
 
 /* Placeholder badge for the creator ghost row */

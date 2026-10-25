@@ -2,6 +2,7 @@ import { setIcon } from "obsidian";
 import type { PluginSettings } from "../settings/types";
 import { Matcher, type MatchResult } from "../editor/matcher";
 import { markerCssVars } from "../theme/cssVars";
+import { drawPriorityGlyph } from "../theme/priorityGlyph";
 
 /** Marker set on a processed <li> so a re-run of the post-processor (Obsidian
    may invoke it on the same DOM after a re-render) doesn't strip text twice
@@ -162,7 +163,10 @@ function buildBadge(match: MatchResult, settings: PluginSettings): HTMLElement {
 		(match.def.kind === "priority" ? "var(--mr-marker-bg)" : undefined);
 	badge.setCssProps(markerCssVars(match.def.color, badgeBg));
 
-	if (match.def.icon) {
+	if (match.def.kind === "priority") {
+		badge.classList.add("mr-badge-drawn");
+		badge.appendChild(drawPriorityGlyph(match.def.id));
+	} else if (match.def.icon) {
 		badge.classList.add("mr-badge-icon");
 		setIcon(badge, match.def.icon);
 	} else {

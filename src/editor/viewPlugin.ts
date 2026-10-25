@@ -8,15 +8,15 @@ import {
 import { type EditorState, RangeSetBuilder } from "@codemirror/state";
 import type { MarkerDef, PluginSettings } from "../settings/types";
 import { Matcher, matchListLine } from "./matcher";
-import { BadgeWidget } from "./widgets";
+import { type BadgeContent, BadgeWidget } from "./widgets";
 import { markerCssVars, markerStyleAttr } from "../theme/cssVars";
 
 interface MarkerDecorations {
 	line: Decoration;
 	/** Badge styling over the raw trigger text. */
 	mark: Decoration;
-	/** Icon replace-widget, for markers that have an icon. */
-	icon: Decoration | null;
+	/** Replace-widget: drawn priority marks or the marker's icon. */
+	widget: Decoration | null;
 }
 
 function buildMarkerDecorations(
@@ -28,6 +28,12 @@ function buildMarkerDecorations(
 		(def.kind === "priority" ? "var(--mr-marker-bg)" : undefined);
 	const cssVars = markerCssVars(def.color, badgeBg);
 	const style = markerStyleAttr(def.color, badgeBg);
+	const content: BadgeContent | null =
+		def.kind === "priority"
+			? { kind: "priority", id: def.id }
+			: def.icon
+				? { kind: "icon", icon: def.icon }
+				: null;
 
 	return {
 		line: Decoration.line({
@@ -36,11 +42,11 @@ function buildMarkerDecorations(
 		mark: Decoration.mark({
 			attributes: { class: `mr-badge mr-badge-${def.id} mr-colorized`, style },
 		}),
-		icon: def.icon
+		widget: content
 			? Decoration.replace({
 					widget: new BadgeWidget(
 						def.id,
-						def.icon,
+						content,
 						def.label,
 						showTooltips,
 						cssVars,
@@ -139,15 +145,15 @@ export function buildMarkrExtension(getSettings: () => PluginSettings) {
 							const decorations = this.decorationsFor(match.def);
 							const markerFrom = line.from + match.offset;
 							const markerTo = markerFrom + match.trigger.length;
-							const showIcon =
+							const showWidget =
 								!hideOnCursor || line.number !== this.cursorLine;
 
 							builder.add(line.from, line.from, decorations.line);
 							builder.add(
 								markerFrom,
 								markerTo,
-								decorations.icon && showIcon
-									? decorations.icon
+								decorations.widget && showWidget
+									? decorations.widget
 									: decorations.mark,
 							);
 						}

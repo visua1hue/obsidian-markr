@@ -13,6 +13,7 @@ import {
 import { customCommandId } from "../commands";
 import type MarkrPlugin from "../main";
 import { markerCssVars } from "../theme/cssVars";
+import { drawPriorityGlyph } from "../theme/priorityGlyph";
 import { openHotkeysFor, printHotkey } from "./internals";
 import {
 	MAX_TRIGGER_LENGTH,
@@ -198,6 +199,8 @@ export class MarkerEditor {
 		setting.settingEl.addClass(
 			"mr-settings-marker-row",
 			"mr-settings-marker-row--priority",
+			// Same per-level tint as the marked lines in notes (--mr-tint).
+			`mr-line-${marker.id}`,
 		);
 
 		setting.nameEl.empty();
@@ -545,7 +548,12 @@ export class MarkerEditor {
 		const badgeBg = marker.badgeBg ?? (marker.kind === "priority" ? "var(--mr-marker-bg)" : undefined);
 		badge.setCssProps(markerCssVars(marker.color, badgeBg));
 		badge.setAttribute("aria-hidden", "true");
-		this.applyBadgeContent(badge, marker.icon ?? "", marker.trigger);
+		if (marker.kind === "priority") {
+			badge.addClass("mr-badge-drawn");
+			badge.appendChild(drawPriorityGlyph(marker.id));
+		} else {
+			this.applyBadgeContent(badge, marker.icon ?? "", marker.trigger);
+		}
 		return badge;
 	}
 
